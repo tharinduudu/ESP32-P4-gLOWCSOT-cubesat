@@ -46,6 +46,12 @@ Connect to the setup web page:
 - Password: `glowcost`
 - URL: `http://192.168.4.1`
 
+## Web Interface
+
+The web page highlights SD-card readiness, live one-minute coincident counts, HV/FPGA/DAC controls, environment readings, current log downloads, and previous SD files.
+
+![ESP32-P4 muon readout web interface](docs/assets/webserver-screenshot.png)
+
 For a field run:
 
 1. Insert the SD card.
