@@ -29,15 +29,23 @@ If the serial port differs:
 ls /dev/cu.usb*
 ```
 
-## Main Firmware File
+## Firmware Layout
 
-Most logic is in:
+The firmware is split into detector sections instead of keeping every subsystem in one large file:
 
-```text
-main/main.c
-```
+| File | Responsibility |
+| --- | --- |
+| `main/main.c` | Boot sequence and task startup |
+| `main/app_common.h` | Shared constants, detector types, and cross-module declarations |
+| `main/app_state.c` | Shared runtime state for counts, HV, SD, BME280, Wi-Fi, and run metadata |
+| `main/hardware.c` | GPIO rail, SPI, FPGA programming, DAC writes, HV control, and I2C bus setup |
+| `main/counters.c` | GPIO interrupt counters, minute records, ring buffer, and serial count output |
+| `main/storage.c` | SD card mount, run filenames, CSV formatting, and count/environment file writes |
+| `main/environment.c` | BME280 forced reads, 5-minute averages, and temperature compensation |
+| `main/web.c` | Embedded web UI, HTTP API, Wi-Fi AP, and power-saving web controls |
+| `main/console.c` | USB serial maintenance commands |
 
-Important constants near the top:
+Important constants live in `main/app_common.h`:
 
 | Constant | Purpose |
 | --- | --- |
@@ -87,7 +95,7 @@ The main boot path is in `app_main()`:
 
 ## Web UI
 
-The web interface is embedded as a C string in `main/main.c`. The main API endpoints are:
+The web interface is embedded as a C string in `main/web.c`. The main API endpoints are:
 
 | Endpoint | Purpose |
 | --- | --- |

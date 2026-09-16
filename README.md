@@ -78,7 +78,15 @@ dependencies.lock
 main/
   CMakeLists.txt
   idf_component.yml
+  app_common.h
+  app_state.c
+  console.c
+  counters.c
+  environment.c
+  hardware.c
   main.c
+  storage.c
+  web.c
   fpga.bin
 docs/
   data-format.md
