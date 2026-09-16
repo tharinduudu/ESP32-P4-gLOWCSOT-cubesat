@@ -1,15 +1,18 @@
 #include "app_common.h"
 
+// Read a little-endian unsigned 16-bit value from a BME280 calibration block.
 static uint16_t u16_le(const uint8_t *p)
 {
     return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
 }
 
+// Read a little-endian signed 16-bit value from a BME280 calibration block.
 static int16_t s16_le(const uint8_t *p)
 {
     return (int16_t)u16_le(p);
 }
 
+// Bring up the shared I2C bus used by the BME280 and the Oct-2025 DAC.
 esp_err_t init_i2c_bus(void)
 {
     // The BME280 and Oct-2025 DAC share this I2C bus. Initialize it lazily so
@@ -35,17 +38,20 @@ esp_err_t init_i2c_bus(void)
     return ESP_OK;
 }
 
+// Read one or more bytes from a BME280 register.
 static esp_err_t bme280_read_reg(uint8_t reg, uint8_t *data, size_t len)
 {
     return i2c_master_write_read_device(BME280_I2C_PORT, s_bme280_addr, &reg, 1, data, len, pdMS_TO_TICKS(100));
 }
 
+// Write a single BME280 configuration register.
 static esp_err_t bme280_write_reg(uint8_t reg, uint8_t value)
 {
     uint8_t data[2] = {reg, value};
     return i2c_master_write_to_device(BME280_I2C_PORT, s_bme280_addr, data, sizeof(data), pdMS_TO_TICKS(100));
 }
 
+// Check one possible BME280 I2C address and remember it if the chip ID matches.
 static esp_err_t bme280_probe_addr(uint8_t addr)
 {
     uint8_t reg = 0xD0;
@@ -58,6 +64,8 @@ static esp_err_t bme280_probe_addr(uint8_t addr)
     return ret == ESP_OK ? ESP_ERR_NOT_FOUND : ret;
 }
 
+// Load factory calibration coefficients from the BME280 so raw ADC values can
+// be compensated into real temperature, pressure, and humidity.
 static esp_err_t bme280_load_calibration(void)
 {
     uint8_t calib1[26];
@@ -88,6 +96,7 @@ static esp_err_t bme280_load_calibration(void)
     return ESP_OK;
 }
 
+// Detect and configure the BME280 in forced mode with high oversampling.
 esp_err_t init_bme280(void)
 {
     ESP_RETURN_ON_ERROR(init_i2c_bus(), TAG, "init I2C for BME280");
@@ -111,6 +120,8 @@ esp_err_t init_bme280(void)
     return ESP_OK;
 }
 
+// Trigger one forced BME280 measurement and convert the raw result into
+// engineering units using the stored calibration coefficients.
 static esp_err_t bme280_read_forced(bme280_reading_t *out)
 {
     if (!s_bme280_ok) {
@@ -173,6 +184,7 @@ static esp_err_t bme280_read_forced(bme280_reading_t *out)
 }
 
 
+// Clamp a floating-point value into a closed range.
 static double clamp_double(double value, double lo, double hi)
 {
     if (value < lo) {
@@ -184,6 +196,7 @@ static double clamp_double(double value, double lo, double hi)
     return value;
 }
 
+// Clamp an integer value into a closed range.
 static int clamp_int(int value, int lo, int hi)
 {
     if (value < lo) {
@@ -195,6 +208,8 @@ static int clamp_int(int value, int lo, int hi)
     return value;
 }
 
+// Convert a stored 10-bit DAC code into the low-side voltage used by the
+// temperature compensation calculation.
 static double dac_code_to_vlow(uint16_t code)
 {
     double frac = (double)(code & 0x03ff) / 1023.0;
@@ -202,6 +217,8 @@ static double dac_code_to_vlow(uint16_t code)
     return value < 0.0 ? 0.0 : value;
 }
 
+// Convert the desired low-side voltage back to the 10-bit code used throughout
+// the firmware and web API.
 static uint16_t dac_vlow_to_code(double vlow)
 {
     double clipped = vlow < 0.0 ? 0.0 : vlow;
@@ -209,6 +226,8 @@ static uint16_t dac_vlow_to_code(double vlow)
     return (uint16_t)clamp_int(code, 0, 1023);
 }
 
+// Apply a slow temperature correction to the SiPM bias DACs after a stable
+// BME280 averaging window.
 static void temp_compensate_dac(double temp_avg_c, double temp_std_c, uint32_t samples)
 {
 #if READOUT_PROFILE_OCT2025
@@ -263,6 +282,8 @@ static void temp_compensate_dac(double temp_avg_c, double temp_std_c, uint32_t s
 #endif
 }
 
+// Periodically sample the BME280, publish the latest reading for the web page,
+// and write five-minute averages to the environment file.
 void bme280_task(void *arg)
 {
     (void)arg;

@@ -1,5 +1,6 @@
 #include "app_common.h"
 
+// Convert a user-entered run label into a short filename-safe token.
 void sanitize_run_label(const char *input, char *output, size_t output_len)
 {
     // Labels end up in filenames, so keep them friendly to FAT filesystems and
@@ -19,6 +20,8 @@ void sanitize_run_label(const char *input, char *output, size_t output_len)
     output[j] = '\0';
 }
 
+// Decode the small subset of URL encoding used by query strings from the
+// built-in web form.
 void url_decode_in_place(char *s)
 {
     char *r = s;
@@ -38,6 +41,8 @@ void url_decode_in_place(char *s)
     *w = '\0';
 }
 
+// Format an epoch timestamp for CSV output, using "unset" while the device has
+// not received browser time yet.
 void csv_time_string(time_t epoch, char *out, size_t out_len)
 {
     if (epoch > 1600000000) {
@@ -49,6 +54,7 @@ void csv_time_string(time_t epoch, char *out, size_t out_len)
     }
 }
 
+// Build the muon-count CSV header from the active channel list.
 void count_csv_header(char *out, size_t out_len)
 {
     size_t off = snprintf(out, out_len, "epoch,iso");
@@ -63,6 +69,8 @@ void count_csv_header(char *out, size_t out_len)
     }
 }
 
+// Construct the full SD path for either the muon or environment file, including
+// optional run label and collision suffix.
 static void sd_build_candidate_path(const char *prefix, char *path, size_t path_len, unsigned suffix)
 {
     char stem[80];
@@ -91,6 +99,7 @@ static void sd_build_candidate_path(const char *prefix, char *path, size_t path_
     }
 }
 
+// Create a new CSV and write its header, leaving existing files untouched.
 static esp_err_t sd_write_header_if_new(const char *path, const char *header)
 {
     if (access(path, F_OK) == 0) {
@@ -108,6 +117,8 @@ static esp_err_t sd_write_header_if_new(const char *path, const char *header)
     return ESP_OK;
 }
 
+// Refresh one active SD filename while the caller holds the SD mutex. This also
+// handles renaming an unsynced file after the clock becomes valid.
 static esp_err_t sd_refresh_one_path_locked(char *path, size_t path_len, const char *prefix, const char *header)
 {
     if (!s_sd_mounted) {
@@ -146,6 +157,8 @@ static esp_err_t sd_refresh_one_path_locked(char *path, size_t path_len, const c
     return ESP_OK;
 }
 
+// Refresh both active run files under the SD lock: the muon count file and the
+// slower environment-average file.
 esp_err_t sd_refresh_log_path_locked(void)
 {
     char count_header[192];
@@ -160,6 +173,8 @@ esp_err_t sd_refresh_log_path_locked(void)
         "epoch,iso,samples,temp_c_avg,pressure_hpa_avg,humidity_pct_avg\n");
 }
 
+// Public wrapper for renaming/creating SD files when a web request changes time
+// or the run label.
 esp_err_t sd_refresh_log_path(void)
 {
     if (!s_sd_mutex) {
@@ -171,6 +186,8 @@ esp_err_t sd_refresh_log_path(void)
     return ret;
 }
 
+// Mount the onboard SD card over its dedicated SPI pins and create fresh output
+// files for this boot.
 esp_err_t init_sd_card(void)
 {
     s_sd_mutex = xSemaphoreCreateMutex();
@@ -218,6 +235,7 @@ esp_err_t init_sd_card(void)
     return ret;
 }
 
+// Append one completed one-minute detector record to the active muon CSV file.
 void sd_append_record(const count_record_t *record)
 {
     if (!s_sd_mutex) {
@@ -251,6 +269,7 @@ void sd_append_record(const count_record_t *record)
     xSemaphoreGive(s_sd_mutex);
 }
 
+// Append one five-minute BME280 average to the active environment CSV file.
 void sd_append_env_average(time_t epoch, uint32_t samples, double temp_c, double pressure_hpa, double humidity_pct)
 {
     if (!s_sd_mutex || samples == 0) {

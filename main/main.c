@@ -1,5 +1,7 @@
 #include "app_common.h"
 
+// Prepare non-volatile storage for Wi-Fi/ESP-IDF internals, recovering from
+// stale NVS pages if the flash layout changed between builds.
 static esp_err_t init_nvs(void)
 {
     esp_err_t ret = nvs_flash_init();
@@ -10,6 +12,8 @@ static esp_err_t init_nvs(void)
     return ret;
 }
 
+// Top-level boot choreography for the detector. This keeps dangerous hardware
+// transitions in one readable order and starts background tasks only afterward.
 void app_main(void)
 {
     ESP_LOGI(TAG, "gLOWCOST MPPC ESP32-P4 Wi-Fi readout");

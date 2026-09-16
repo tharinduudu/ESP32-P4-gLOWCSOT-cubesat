@@ -57,6 +57,7 @@ static const char s_index_html[] =
 "autoSyncTime(); loadSdFiles(); setInterval(refresh,2000);</script></body></html>";
 
 
+// Extract one query parameter from an HTTP request.
 static bool query_value(httpd_req_t *req, const char *key, char *out, size_t out_len)
 {
     char query[128];
@@ -66,12 +67,14 @@ static bool query_value(httpd_req_t *req, const char *key, char *out, size_t out
     return httpd_query_key_value(query, key, out, out_len) == ESP_OK;
 }
 
+// Send a plain-text response for the small command-style API endpoints.
 static esp_err_t text_response(httpd_req_t *req, const char *text)
 {
     httpd_resp_set_type(req, "text/plain");
     return httpd_resp_sendstr(req, text);
 }
 
+// Serve the embedded detector dashboard.
 static esp_err_t root_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "text/html");
@@ -79,6 +82,7 @@ static esp_err_t root_handler(httpd_req_t *req)
     return httpd_resp_send(req, s_index_html, HTTPD_RESP_USE_STRLEN);
 }
 
+// Append one RAM log record into an existing JSON response buffer.
 static void json_record_append(char *buf, size_t buf_len, size_t *offset, const count_record_t *record)
 {
     int written = snprintf(buf + *offset, buf_len - *offset,
@@ -101,6 +105,8 @@ static void json_record_append(char *buf, size_t buf_len, size_t *offset, const 
     }
 }
 
+// Format one detector record as the Pi-style CSV row used by downloads and
+// quick display clients.
 static void csv_record_line(const count_record_t *record, char *line, size_t line_len)
 {
     char iso[32];
@@ -117,6 +123,8 @@ static void csv_record_line(const count_record_t *record, char *line, size_t lin
     }
 }
 
+// Return the live detector status used by the dashboard: counts, HV, SD, time,
+// FPGA, and environment state.
 static esp_err_t status_handler(httpd_req_t *req)
 {
     uint32_t live[COUNT_CHANNELS];
@@ -210,6 +218,7 @@ static esp_err_t status_handler(httpd_req_t *req)
     return httpd_resp_send(req, buf, off);
 }
 
+// Download the in-RAM recent minute log as CSV.
 static esp_err_t log_csv_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "text/csv");
@@ -236,6 +245,8 @@ static esp_err_t log_csv_handler(httpd_req_t *req)
     return httpd_resp_sendstr_chunk(req, NULL);
 }
 
+// Return only the newest minute row, matching the "tail -f" style display use
+// case for the small ESP32-S3 screen.
 static esp_err_t latest_txt_handler(httpd_req_t *req)
 {
     count_record_t record = {0};
@@ -259,6 +270,8 @@ static esp_err_t latest_txt_handler(httpd_req_t *req)
     return httpd_resp_sendstr(req, line);
 }
 
+// Accept browser time from the web page and repair the run start timestamp if
+// the detector booted before time was known.
 static esp_err_t time_handler(httpd_req_t *req)
 {
     char value[24];
@@ -290,6 +303,7 @@ static esp_err_t time_handler(httpd_req_t *req)
     return text_response(req, "ok");
 }
 
+// Update the operator label that becomes part of the active SD filenames.
 static esp_err_t run_label_handler(httpd_req_t *req)
 {
     char label_raw[80] = "";
@@ -313,6 +327,7 @@ static esp_err_t run_label_handler(httpd_req_t *req)
     return text_response(req, "ok");
 }
 
+// Stream the active muon-count SD file to the browser.
 static esp_err_t sd_csv_handler(httpd_req_t *req)
 {
     char path[sizeof(s_log_path)] = "";
@@ -348,6 +363,7 @@ static esp_err_t sd_csv_handler(httpd_req_t *req)
     return httpd_resp_send_chunk(req, NULL, 0);
 }
 
+// Stream the active environment SD file to the browser.
 static esp_err_t env_csv_handler(httpd_req_t *req)
 {
     char path[sizeof(s_env_log_path)] = "";
@@ -383,12 +399,14 @@ static esp_err_t env_csv_handler(httpd_req_t *req)
     return httpd_resp_send_chunk(req, NULL, 0);
 }
 
+// Return the filename portion of a full path.
 static const char *path_basename(const char *path)
 {
     const char *base = strrchr(path, '/');
     return base ? base + 1 : path;
 }
 
+// Decide whether a requested SD filename is safe to list or download.
 static bool is_log_filename_allowed(const char *name)
 {
     size_t len = strlen(name);
@@ -414,6 +432,7 @@ typedef struct {
     bool current;
 } sd_file_info_t;
 
+// Sort SD files newest first, similar to "ls -lt".
 static int compare_sd_file_info_newest_first(const void *a, const void *b)
 {
     const sd_file_info_t *fa = (const sd_file_info_t *)a;
@@ -427,6 +446,7 @@ static int compare_sd_file_info_newest_first(const void *a, const void *b)
     return strcmp(fa->name, fb->name);
 }
 
+// List previous CSV/log files on the SD card, newest first, for the dashboard.
 static esp_err_t sd_files_handler(httpd_req_t *req)
 {
     if (!s_sd_mutex) {
@@ -526,6 +546,7 @@ static esp_err_t sd_files_handler(httpd_req_t *req)
     return httpd_resp_sendstr_chunk(req, NULL);
 }
 
+// Stream a selected previous SD file after validating the requested name.
 static esp_err_t sd_file_handler(httpd_req_t *req)
 {
     char name_raw[96];
@@ -574,6 +595,8 @@ static esp_err_t sd_file_handler(httpd_req_t *req)
     return httpd_resp_send_chunk(req, NULL, 0);
 }
 
+// Web endpoint for setting or disabling HV, using the same settle gating as
+// startup.
 static esp_err_t hv_handler(httpd_req_t *req)
 {
     char value[16];
@@ -592,6 +615,7 @@ static esp_err_t hv_handler(httpd_req_t *req)
     return text_response(req, "ok");
 }
 
+// Web endpoint for writing one DAC channel during bench tuning.
 static esp_err_t dac_handler(httpd_req_t *req)
 {
     char ch_s[8];
@@ -608,6 +632,8 @@ static esp_err_t dac_handler(httpd_req_t *req)
     return text_response(req, "ok");
 }
 
+// Web endpoint for the safe FPGA reflash sequence: HV off, program, DAC init,
+// HV back on, then normal settle.
 static esp_err_t fpga_handler(httpd_req_t *req)
 {
     // Reflashing while biased made the front-end LEDs and counts misbehave on
@@ -638,6 +664,7 @@ static esp_err_t fpga_handler(httpd_req_t *req)
     return text_response(req, "ok: FPGA flashed, DAC startup values loaded, HV restarted");
 }
 
+// Lower the idle CPU floor where ESP-IDF power management is available.
 static void set_runtime_power_profile(void)
 {
 #if CONFIG_PM_ENABLE
@@ -657,6 +684,8 @@ static void set_runtime_power_profile(void)
 #endif
 }
 
+// Shut the radio stack down for quiet battery operation, briefly cycling HV off
+// before restoring the detector.
 static void power_save_task(void *arg)
 {
     (void)arg;
@@ -714,6 +743,7 @@ static void power_save_task(void *arg)
     vTaskDelete(NULL);
 }
 
+// Mark power-saving mode active and launch the shutdown task once.
 static esp_err_t enter_power_save_mode(void)
 {
     portENTER_CRITICAL(&s_state_mux);
@@ -729,6 +759,7 @@ static esp_err_t enter_power_save_mode(void)
     return ok == pdPASS ? ESP_OK : ESP_ERR_NO_MEM;
 }
 
+// Respond to the browser before Wi-Fi disappears, then start power-saving mode.
 static esp_err_t power_save_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "text/plain");
@@ -741,6 +772,7 @@ static esp_err_t power_save_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+// Toggle whether Wi-Fi should stay up for this boot.
 static esp_err_t wifi_keep_on_handler(httpd_req_t *req)
 {
     char value[8] = "1";
@@ -755,6 +787,8 @@ static esp_err_t wifi_keep_on_handler(httpd_req_t *req)
     return text_response(req, keep_on ? "ok: Wi-Fi will stay on" : "ok: Wi-Fi auto-off enabled");
 }
 
+// Give the operator a short setup window, then disable Wi-Fi automatically if no
+// one connected and "keep on" was not selected.
 void auto_power_save_task(void *arg)
 {
     (void)arg;
@@ -789,6 +823,7 @@ void auto_power_save_task(void *arg)
     vTaskDelete(NULL);
 }
 
+// Track AP client count so auto power-save knows whether anyone is using Wi-Fi.
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     (void)arg;
@@ -811,6 +846,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     }
 }
 
+// Start the ESP32 access point used for local detector setup and downloads.
 esp_err_t start_wifi_ap(void)
 {
     ESP_LOGI(TAG, "Wi-Fi init: netif");
@@ -849,6 +885,7 @@ esp_err_t start_wifi_ap(void)
     return ESP_OK;
 }
 
+// Start the HTTP server and register all dashboard/API routes.
 esp_err_t start_webserver(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();

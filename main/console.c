@@ -12,11 +12,13 @@ static char *trim(char *line)
     return line;
 }
 
+// Print the small USB-serial command list for bench bring-up.
 static void print_help(void)
 {
     printf("commands: help | status | counts | fpga | dac zero | dac <ch 0-7> <hex16> | hv off | hv <hex8>\n");
 }
 
+// Handle simple USB-serial maintenance commands without requiring the Wi-Fi UI.
 void console_task(void *arg)
 {
     (void)arg;
@@ -62,4 +64,3 @@ void console_task(void *arg)
     }
     vTaskDelete(NULL);
 }
-

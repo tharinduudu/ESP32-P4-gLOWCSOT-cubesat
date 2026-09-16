@@ -1,5 +1,6 @@
 #include "app_common.h"
 
+// Take the shared SPI mutex before talking to FPGA, HV, or legacy SPI DAC.
 static void spi_lock(void)
 {
     if (s_spi_mutex) {
@@ -7,6 +8,7 @@ static void spi_lock(void)
     }
 }
 
+// Release the shared SPI mutex after a short peripheral transaction.
 static void spi_unlock(void)
 {
     if (s_spi_mutex) {
@@ -16,6 +18,8 @@ static void spi_unlock(void)
 
 static void stop_fpga_clock(void);
 
+// Enable the ESP32-P4 IO rail needed by the high-numbered pins used for the
+// readout board.
 esp_err_t configure_high_gpio_rail(void)
 {
     // GPIO46/GPIO48 live on the high-voltage-capable IO rail on the P4 module.
@@ -38,6 +42,8 @@ esp_err_t configure_high_gpio_rail(void)
     return ESP_OK;
 }
 
+// Start the FPGA clock at either the programming frequency or the Oct-2025
+// runtime frequency.
 static esp_err_t start_fpga_clock_hz(uint32_t hz)
 {
     if (s_fpga_clock_on) {
@@ -88,11 +94,13 @@ static esp_err_t start_fpga_clock_hz(uint32_t hz)
     return ESP_OK;
 }
 
+// Start the programming clock used while shifting the iCE40 bitstream.
 static esp_err_t start_fpga_clock(void)
 {
     return start_fpga_clock_hz(FPGA_CLK_HZ);
 }
 
+// Stop whatever FPGA clock source is currently active.
 static void stop_fpga_clock(void)
 {
     if (!s_fpga_clock_on) {
@@ -119,6 +127,7 @@ static void stop_fpga_clock(void)
     }
 }
 
+// Send a blocking SPI transaction to one device on the shared bus.
 static esp_err_t spi_send(spi_device_handle_t dev, const uint8_t *data, size_t len)
 {
     spi_transaction_t transaction = {
@@ -128,6 +137,8 @@ static esp_err_t spi_send(spi_device_handle_t dev, const uint8_t *data, size_t l
     return spi_device_transmit(dev, &transaction);
 }
 
+// Configure the Pi-header SPI bus and attach the FPGA/HV devices used by this
+// readout profile.
 esp_err_t init_spi(void)
 {
     s_spi_mutex = xSemaphoreCreateMutex();
@@ -173,6 +184,7 @@ esp_err_t init_spi(void)
     return ESP_OK;
 }
 
+// Set up FPGA reset, chip-select, and DONE pins before any programming attempt.
 esp_err_t init_control_gpios(void)
 {
     gpio_config_t outputs = {
@@ -197,6 +209,8 @@ esp_err_t init_control_gpios(void)
     return ESP_OK;
 }
 
+// Put the iCE40 into a clean SPI-configuration state while the caller owns the
+// SPI bus.
 static esp_err_t ice40_clear_locked(void)
 {
     // iCE40 SPI configuration starts with CRESET low while CS is held low, then
@@ -212,6 +226,7 @@ static esp_err_t ice40_clear_locked(void)
     return ESP_OK;
 }
 
+// Clock the embedded bitstream into the iCE40 and verify that DONE rises.
 esp_err_t program_fpga(void)
 {
     const size_t embedded_len = fpga_bin_end - fpga_bin_start;
@@ -274,6 +289,7 @@ esp_err_t program_fpga(void)
 }
 
 #if !READOUT_PROFILE_OCT2025
+// Write a register on the older SPI DAC profile.
 static esp_err_t dac_write(uint8_t reg, uint16_t value)
 {
     uint8_t data[3] = {reg, (uint8_t)(value >> 8), (uint8_t)value};
@@ -284,6 +300,8 @@ static esp_err_t dac_write(uint8_t reg, uint16_t value)
 }
 #endif
 
+// Write one channel on the Oct-2025 I2C DAC, accepting the same 10-bit value
+// scale used by the older firmware.
 static esp_err_t dacx578_write_channel(uint8_t ch, uint16_t code10)
 {
     ESP_RETURN_ON_ERROR(init_i2c_bus(), TAG, "init I2C for DACx578");
@@ -303,6 +321,7 @@ static esp_err_t dacx578_write_channel(uint8_t ch, uint16_t code10)
     return i2c_master_write_to_device(BME280_I2C_PORT, DACX578_ADDR, data, sizeof(data), pdMS_TO_TICKS(100));
 }
 
+// Set one DAC channel and mirror the value in RAM for status and compensation.
 esp_err_t dac_set_channel(uint8_t ch, uint16_t value)
 {
     esp_err_t ret;
@@ -319,6 +338,7 @@ esp_err_t dac_set_channel(uint8_t ch, uint16_t value)
     return ret;
 }
 
+// Load the startup DAC values for SiPM bias and threshold channels.
 esp_err_t dac_zero_channels(void)
 {
 #if READOUT_PROFILE_OCT2025
@@ -352,6 +372,7 @@ esp_err_t dac_zero_channels(void)
 #endif
 }
 
+// Send the raw control byte to the MAX1932 HV controller and update status.
 esp_err_t hv_write_byte(uint8_t value)
 {
     spi_lock();
@@ -365,6 +386,8 @@ esp_err_t hv_write_byte(uint8_t value)
     return ESP_OK;
 }
 
+// Clear only the live interrupt counters. Historical minute records are left
+// alone.
 void clear_live_counts(void)
 {
     portENTER_CRITICAL(&s_count_mux);
@@ -374,6 +397,7 @@ void clear_live_counts(void)
     portEXIT_CRITICAL(&s_count_mux);
 }
 
+// Read the current counting gate under the shared state lock.
 bool counting_is_enabled(void)
 {
     bool enabled;
@@ -383,6 +407,8 @@ bool counting_is_enabled(void)
     return enabled;
 }
 
+// Change HV safely and enforce the quiet settling interval before counting is
+// allowed again.
 esp_err_t hv_write_and_settle(uint8_t value)
 {
     // Counts taken while the bias is moving are mostly noise, so every HV change
