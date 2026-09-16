@@ -65,3 +65,5 @@ Result: slightly noisier than `0x080`, but still far quieter than `0x040`.
 `0x070` was left as the active threshold value because it is between the quiet `0x080` setting and the overly sensitive `0x040` setting.
 
 For future tuning, take longer runs at each threshold. One minute is useful for quick checks, but stable detector tuning should compare longer periods under similar temperature and scintillator conditions.
+
+The present threshold choice should be treated as a practical operating setting, not a final optimized value. Waveforms from the analog/front-end outputs should be captured and analyzed further to fine-tune the threshold against real pulse height, noise pickup, afterpulsing, and coincidence efficiency.
