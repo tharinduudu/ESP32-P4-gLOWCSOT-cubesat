@@ -1,0 +1,11 @@
+build/
+managed_components/
+.cache/
+.DS_Store
+sdkconfig.old
+*.elf
+*.bin.S
+*.map
+*.log
+*.tmp
+
