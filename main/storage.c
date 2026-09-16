@@ -2,6 +2,8 @@
 
 void sanitize_run_label(const char *input, char *output, size_t output_len)
 {
+    // Labels end up in filenames, so keep them friendly to FAT filesystems and
+    // easy to type later in analysis scripts.
     size_t j = 0;
     for (size_t i = 0; input[i] && j + 1 < output_len; i++) {
         unsigned char c = (unsigned char)input[i];
@@ -64,6 +66,8 @@ void count_csv_header(char *out, size_t out_len)
 static void sd_build_candidate_path(const char *prefix, char *path, size_t path_len, unsigned suffix)
 {
     char stem[80];
+    // Before browser time sync, create an "unsynced" file. Once time arrives,
+    // the active files are renamed so the final run has a real start timestamp.
     if (s_run_start_epoch > 1600000000) {
         struct tm tm;
         localtime_r(&s_run_start_epoch, &tm);
@@ -111,6 +115,8 @@ static esp_err_t sd_refresh_one_path_locked(char *path, size_t path_len, const c
     }
 
     char new_path[128];
+    // Never append to an older run by accident. If a filename already exists,
+    // walk suffixes until this boot gets a fresh file.
     for (unsigned suffix = 0; suffix < 100; suffix++) {
         sd_build_candidate_path(prefix, new_path, sizeof(new_path), suffix);
         if (path[0] && strcmp(path, new_path) == 0) {
@@ -232,6 +238,8 @@ void sd_append_record(const count_record_t *record)
 
     char iso[32];
     csv_time_string(record->epoch, iso, sizeof(iso));
+    // Keep the SD CSV compatible with the Pi-era log style: epoch, ISO time,
+    // then the detector channels. Uptime stays internal only.
     fprintf(f, "%lld,%s", (long long)record->epoch, iso);
     for (size_t i = 0; i < COUNT_CHANNELS; i++) {
         fprintf(f, ",%" PRIu32, record->counts[i]);
@@ -270,4 +278,3 @@ void sd_append_env_average(time_t epoch, uint32_t samples, double temp_c, double
     fclose(f);
     xSemaphoreGive(s_sd_mutex);
 }
-

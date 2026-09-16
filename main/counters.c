@@ -2,6 +2,8 @@
 
 static void IRAM_ATTR count_isr(void *arg)
 {
+    // Keep this ISR boring: one bounds check and one increment. Anything slower
+    // belongs in the minute task so Wi-Fi/web traffic cannot stretch dead time.
     uintptr_t index = (uintptr_t)arg;
     if (s_counting_enabled && index < COUNT_CHANNELS) {
         portENTER_CRITICAL_ISR(&s_count_mux);
@@ -39,6 +41,8 @@ esp_err_t init_counters(void)
 
 void snapshot_counts(uint32_t out[COUNT_CHANNELS], bool reset)
 {
+    // The reset option gives the one-minute task an atomic "read and clear"
+    // operation while the web page can still take non-destructive snapshots.
     portENTER_CRITICAL(&s_count_mux);
     for (size_t i = 0; i < COUNT_CHANNELS; i++) {
         out[i] = s_counts[i];
@@ -57,6 +61,8 @@ static void append_log_record(const uint32_t counts[COUNT_CHANNELS])
     };
     memcpy(record.counts, counts, sizeof(record.counts));
 
+    // RAM keeps only the recent tail for the web UI. The SD card remains the
+    // long-term record, so losing old RAM entries is expected.
     portENTER_CRITICAL(&s_state_mux);
     memcpy(s_last_counts, counts, sizeof(s_last_counts));
     for (size_t i = 0; i < COUNT_CHANNELS; i++) {
@@ -96,6 +102,8 @@ void counter_task(void *arg)
 {
     (void)arg;
     while (true) {
+        // Do not start the one-minute integration window until HV has settled.
+        // Otherwise the first row after startup would include bias ramp noise.
         while (!counting_is_enabled()) {
             clear_live_counts();
             vTaskDelay(pdMS_TO_TICKS(1000));
@@ -104,4 +112,3 @@ void counter_task(void *arg)
         print_and_reset_counts();
     }
 }
-

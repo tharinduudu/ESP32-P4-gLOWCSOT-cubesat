@@ -1,6 +1,8 @@
 #include "app_common.h"
 
 static const char s_index_html[] =
+// One self-contained page keeps the AP useful even with no internet connection
+// and no filesystem dependency beyond the SD data logs.
 "<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
 "<title>Muon Readout</title><style>"
 ":root{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#182026;background:#f7f5ef}"
@@ -136,6 +138,8 @@ static esp_err_t status_handler(httpd_req_t *req)
     bool bme280_ok;
     bme280_reading_t env_latest;
 
+    // Take fast snapshots under the small locks, then format JSON after the
+    // locks are released. The web task should not block counting or SD writes.
     snapshot_counts(live, false);
     portENTER_CRITICAL(&s_state_mux);
     memcpy(s_live_counts, live, sizeof(s_live_counts));
@@ -273,6 +277,8 @@ static esp_err_t time_handler(httpd_req_t *req)
     portENTER_CRITICAL(&s_state_mux);
     s_time_set = true;
     portEXIT_CRITICAL(&s_state_mux);
+    // If the run started before the phone/browser set time, reconstruct the
+    // likely boot timestamp and rename the active files to match it.
     if (s_run_start_epoch <= 1600000000 && s_run_start_uptime_ms > 0) {
         int64_t elapsed_s = ((esp_timer_get_time() / 1000) - s_run_start_uptime_ms) / 1000;
         s_run_start_epoch = (time_t)(epoch - elapsed_s);
@@ -473,6 +479,8 @@ static esp_err_t sd_files_handler(httpd_req_t *req)
         if (file_count < SD_FILE_LIST_MAX) {
             file = &files[file_count++];
         } else {
+            // The browser only needs a useful recent list. If the card has many
+            // files, keep the newest entries instead of allocating a huge buffer.
             size_t oldest = 0;
             for (size_t i = 1; i < file_count; i++) {
                 if (files[i].mtime < files[oldest].mtime) {
@@ -602,6 +610,8 @@ static esp_err_t dac_handler(httpd_req_t *req)
 
 static esp_err_t fpga_handler(httpd_req_t *req)
 {
+    // Reflashing while biased made the front-end LEDs and counts misbehave on
+    // the bench, so enforce the safe sequence here instead of trusting the UI.
     ESP_LOGW(TAG, "FPGA reflash requested: turning HV off before programming");
     esp_err_t ret = hv_write_and_settle(0x00);
     if (ret != ESP_OK) {
@@ -652,6 +662,8 @@ static void power_save_task(void *arg)
     (void)arg;
     vTaskDelay(pdMS_TO_TICKS(1500));
 
+    // Capture the current HV byte before the web server disappears. After this
+    // request returns, the operator may not be able to reach the device again.
     uint8_t restore_hv;
     portENTER_CRITICAL(&s_state_mux);
     restore_hv = s_hv_byte;
@@ -684,6 +696,8 @@ static void power_save_task(void *arg)
 
     ESP_LOGW(TAG, "Wi-Fi is off; keeping HV off for 3 seconds");
     vTaskDelay(pdMS_TO_TICKS(3000));
+    // The short HV-off window was added after Wi-Fi activity showed up as noise.
+    // Counting is still gated by the normal HV settle delay when HV comes back.
     if (restore_hv != 0) {
         ESP_LOGW(TAG, "restoring HV byte 0x%02x after Wi-Fi shutdown", restore_hv);
         ret = hv_write_and_settle(restore_hv);
@@ -761,6 +775,8 @@ void auto_power_save_task(void *arg)
             continue;
         }
         if (clients == 0) {
+            // Field default: give the operator a short setup window, then shut
+            // radio noise down if nobody connected.
             ESP_LOGW(TAG, "no Wi-Fi client after setup window; entering power saving mode");
             esp_err_t ret = enter_power_save_mode();
             if (ret != ESP_OK) {
@@ -836,6 +852,8 @@ esp_err_t start_wifi_ap(void)
 esp_err_t start_webserver(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    // Keep the web server on the non-counter core with modest priority. It is a
+    // convenience interface; GPIO counting is the measurement.
     config.core_id = 1;
     config.task_priority = tskIDLE_PRIORITY + 3;
     config.stack_size = 8192;
@@ -866,4 +884,3 @@ esp_err_t start_webserver(void)
     ESP_LOGI(TAG, "HTTP server ready on http://192.168.4.1");
     return ESP_OK;
 }
-

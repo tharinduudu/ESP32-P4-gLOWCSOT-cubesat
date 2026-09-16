@@ -67,6 +67,8 @@
 
 #define READOUT_PROFILE_OCT2025 1
 
+// The Oct-2025 PCB moved the threshold DAC onto I2C and expects a faster
+// FPGA configuration path than the older Pi HAT setup.
 #if READOUT_PROFILE_OCT2025
 #define FPGA_SPI_HZ             (4 * 1000 * 1000)
 #define FPGA_SPI_MODE           0
@@ -100,6 +102,8 @@
 #define ICE40_PI_BITSTREAM_LEN  0x1CA6
 #if READOUT_PROFILE_OCT2025
 #define COUNT_CHANNELS          7
+// These are the latest bench-tested startup values. The threshold is usable
+// for field checks, but waveform analysis is still needed before final tuning.
 #define STARTUP_HV_BYTE         0xEA
 #define STARTUP_DAC_CODE        0x2F1
 #define STARTUP_DAC_THRESHOLD_CODE 0x070
@@ -134,6 +138,9 @@
 extern const uint8_t fpga_bin_start[] asm("_binary_fpga_bin_start");
 extern const uint8_t fpga_bin_end[] asm("_binary_fpga_bin_end");
 
+// A minute record is kept in RAM for the live web page and also written to SD.
+// Uptime is not written to the SD CSV, but keeping it here is useful while the
+// detector waits for browser time sync.
 typedef struct {
     int64_t uptime_ms;
     time_t epoch;
@@ -169,7 +176,9 @@ typedef struct {
     double t_fine;
 } bme280_calib_t;
 
-
+// Shared state is deliberately centralized. The detector tasks are split into
+// modules, but the ESP32 still behaves like one small firmware image, not a
+// large service with ownership layers.
 extern const char *TAG;
 extern spi_device_handle_t s_fpga;
 #if !READOUT_PROFILE_OCT2025
@@ -247,4 +256,3 @@ void bme280_task(void *arg);
 esp_err_t start_wifi_ap(void);
 esp_err_t start_webserver(void);
 void auto_power_save_task(void *arg);
-

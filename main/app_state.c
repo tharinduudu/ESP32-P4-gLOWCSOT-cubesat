@@ -13,6 +13,8 @@ httpd_handle_t s_httpd;
 esp_netif_t *s_ap_netif;
 sdmmc_card_t *s_sd_card;
 
+// Count updates happen in GPIO ISRs, while the web and SD tasks read snapshots.
+// Keep the count lock separate from slower state/SD locks so interrupts stay tiny.
 portMUX_TYPE s_count_mux = portMUX_INITIALIZER_UNLOCKED;
 portMUX_TYPE s_state_mux = portMUX_INITIALIZER_UNLOCKED;
 volatile uint32_t s_counts[COUNT_CHANNELS];
@@ -49,6 +51,8 @@ bool s_bme280_ok;
 bme280_reading_t s_bme280_latest;
 bool s_i2c_ready;
 
+// Channel order is the on-disk and web/API order. Change it carefully because
+// old CSV files and analysis scripts will assume these names.
 const gpio_num_t s_count_pins[COUNT_CHANNELS] = {
     PIN_COUNT_CH01,
     PIN_COUNT_CH02,

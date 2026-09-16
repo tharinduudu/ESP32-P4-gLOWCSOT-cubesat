@@ -15,6 +15,8 @@ void app_main(void)
     ESP_LOGI(TAG, "gLOWCOST MPPC ESP32-P4 Wi-Fi readout");
     ESP_LOGW(TAG, "startup sequence: HV off, FPGA flash, DAC init, then HV 0x%02x after %d ms settle", STARTUP_HV_BYTE, HV_SETTLE_MS);
 
+    // Bring the detector up in the same order a cautious operator would use:
+    // make HV safe first, configure the FPGA/DAC, then enable bias and wait.
     ESP_ERROR_CHECK(init_nvs());
     ESP_ERROR_CHECK(configure_high_gpio_rail());
     ESP_ERROR_CHECK(init_control_gpios());
@@ -33,6 +35,9 @@ void app_main(void)
     } else {
         ESP_LOGW(TAG, "startup HV remains off because DAC init failed");
     }
+
+    // Run time starts after the hardware is in its operating state. If browser
+    // time arrives later, storage.c renames the active files to the real time.
     s_run_start_uptime_ms = esp_timer_get_time() / 1000;
     s_run_start_epoch = time(NULL);
     ret = init_sd_card();
@@ -50,6 +55,8 @@ void app_main(void)
     }
     xTaskCreatePinnedToCore(console_task, "console_task", 4096, NULL, 4, NULL, 1);
 
+    // Wi-Fi starts last so radio work does not overlap the sensitive FPGA/DAC/HV
+    // startup sequence.
     ESP_ERROR_CHECK(start_wifi_ap());
     ESP_ERROR_CHECK(start_webserver());
     xTaskCreatePinnedToCore(auto_power_save_task, "auto_power_save_task", 3072, NULL, 3, NULL, 1);

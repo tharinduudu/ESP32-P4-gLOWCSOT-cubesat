@@ -18,6 +18,9 @@ static void stop_fpga_clock(void);
 
 esp_err_t configure_high_gpio_rail(void)
 {
+    // GPIO46/GPIO48 live on the high-voltage-capable IO rail on the P4 module.
+    // Without this, the HV chip select line can look fine in software but not
+    // actually swing to the level the readout board expects.
     esp_ldo_channel_config_t ldo_cfg = {
         .chan_id = 4,
         .voltage_mv = 3300,
@@ -43,6 +46,8 @@ static esp_err_t start_fpga_clock_hz(uint32_t hz)
 
 #if READOUT_PROFILE_OCT2025
     if (hz == FPGA_RUNTIME_CLK_HZ) {
+        // The Oct-2025 FPGA image expects a real runtime clock after flashing.
+        // LEDC is fine for the programming clock, but CLKOUT is cleaner here.
         esp_err_t ret = esp_clock_output_start(CLKOUT_SIG_CPLL, PIN_FPGA_CLK, &s_fpga_clkout);
         ESP_RETURN_ON_ERROR(ret, TAG, "route CPLL to FPGA clock pin");
         ret = esp_clock_output_set_divider(s_fpga_clkout, 8);
@@ -128,6 +133,8 @@ esp_err_t init_spi(void)
     s_spi_mutex = xSemaphoreCreateMutex();
     ESP_RETURN_ON_FALSE(s_spi_mutex, ESP_ERR_NO_MEM, TAG, "create SPI mutex");
 
+    // FPGA programming and HV control share the Pi-header SPI pins. Serialize
+    // transfers so a web-triggered HV/DAC action cannot collide with reflash.
     spi_bus_config_t buscfg = {
         .mosi_io_num = PIN_SPI_MOSI,
         .miso_io_num = PIN_SPI_MISO,
@@ -192,6 +199,8 @@ esp_err_t init_control_gpios(void)
 
 static esp_err_t ice40_clear_locked(void)
 {
+    // iCE40 SPI configuration starts with CRESET low while CS is held low, then
+    // releases reset and waits before the bitstream is clocked in.
     spi_device_acquire_bus(s_fpga, portMAX_DELAY);
     gpio_set_level(PIN_CS_FPGA, 0);
     gpio_set_level(PIN_FPGA_RST, 0);
@@ -214,6 +223,8 @@ esp_err_t program_fpga(void)
     ESP_LOGI(TAG, "programming iCE40: embedded=%u bytes, sending=%u bytes", (unsigned)embedded_len, (unsigned)bit_len);
     ESP_RETURN_ON_ERROR(start_fpga_clock(), TAG, "start FPGA clock for programming");
 
+    // Keep the programming transaction as one uninterrupted SPI sequence. If
+    // this is broken up, DONE may stay low even though most bytes were sent.
     spi_lock();
     esp_err_t ret = ice40_clear_locked();
     if (ret == ESP_OK) {
@@ -280,6 +291,8 @@ static esp_err_t dacx578_write_channel(uint8_t ch, uint16_t code10)
         return ESP_ERR_INVALID_ARG;
     }
 
+    // The legacy control path and web UI use 10-bit codes. Scale to the
+    // DACx578's 12-bit left-aligned data format at the last possible moment.
     uint16_t raw12 = (uint16_t)(((uint32_t)code10 * 4095U + 511U) / 1023U);
     uint16_t aligned = raw12 << 4;
     uint8_t data[3] = {
@@ -372,6 +385,8 @@ bool counting_is_enabled(void)
 
 esp_err_t hv_write_and_settle(uint8_t value)
 {
+    // Counts taken while the bias is moving are mostly noise, so every HV change
+    // gates counting off, clears the live counters, and waits before recording.
     portENTER_CRITICAL(&s_state_mux);
     s_counting_enabled = false;
     s_hv_settle_until_ms = 0;
@@ -398,4 +413,3 @@ esp_err_t hv_write_and_settle(uint8_t value)
     ESP_LOGI(TAG, "HV settled; counters cleared and counting enabled");
     return ESP_OK;
 }
-

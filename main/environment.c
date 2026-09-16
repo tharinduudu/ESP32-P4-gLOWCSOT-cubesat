@@ -12,6 +12,8 @@ static int16_t s16_le(const uint8_t *p)
 
 esp_err_t init_i2c_bus(void)
 {
+    // The BME280 and Oct-2025 DAC share this I2C bus. Initialize it lazily so
+    // either subsystem can come up first without caring about boot order.
     if (s_i2c_ready) {
         return ESP_OK;
     }
@@ -63,6 +65,8 @@ static esp_err_t bme280_load_calibration(void)
     ESP_RETURN_ON_ERROR(bme280_read_reg(0x88, calib1, sizeof(calib1)), TAG, "read BME280 calibration 1");
     ESP_RETURN_ON_ERROR(bme280_read_reg(0xE1, calib2, sizeof(calib2)), TAG, "read BME280 calibration 2");
 
+    // Bosch stores the calibration coefficients packed in little-endian fields.
+    // Keep the unpacking close to the datasheet so it is easy to audit.
     s_bme280_calib.dig_T1 = u16_le(&calib1[0]);
     s_bme280_calib.dig_T2 = s16_le(&calib1[2]);
     s_bme280_calib.dig_T3 = s16_le(&calib1[4]);
@@ -125,6 +129,8 @@ static esp_err_t bme280_read_forced(bme280_reading_t *out)
     }
 
     double var1 = (((double)adc_T / 16384.0) - ((double)s_bme280_calib.dig_T1 / 1024.0)) * (double)s_bme280_calib.dig_T2;
+    // Floating point is slower, but the BME path runs every 10 seconds and the
+    // formulas are much easier to review than fixed-point compensation code.
     double var2 = ((((double)adc_T / 131072.0) - ((double)s_bme280_calib.dig_T1 / 8192.0)) *
                    (((double)adc_T / 131072.0) - ((double)s_bme280_calib.dig_T1 / 8192.0))) *
                   (double)s_bme280_calib.dig_T3;
@@ -206,6 +212,8 @@ static uint16_t dac_vlow_to_code(double vlow)
 static void temp_compensate_dac(double temp_avg_c, double temp_std_c, uint32_t samples)
 {
 #if READOUT_PROFILE_OCT2025
+    // Only nudge the SiPM bias after a stable five-minute temperature window.
+    // A bad sensor read should not kick the detector threshold around.
     if (samples < TEMP_COMP_MIN_SAMPLES) {
         ESP_LOGW(TAG, "temp compensation skipped: only %" PRIu32 " BME samples", samples);
         return;
@@ -227,6 +235,8 @@ static void temp_compensate_dac(double temp_avg_c, double temp_std_c, uint32_t s
         double ref_vlow = dac_code_to_vlow(STARTUP_DAC_CODE);
         uint16_t absolute_target = dac_vlow_to_code(ref_vlow + dvlow);
         int delta = (int)absolute_target - (int)prev;
+        // Bound each correction block so temperature compensation cannot make
+        // a large jump while the detector is running unattended.
         delta = clamp_int(delta, -TEMP_COMP_MAX_CODES_PER_BLOCK, TEMP_COMP_MAX_CODES_PER_BLOCK);
         uint16_t target = (uint16_t)clamp_int((int)prev + delta, 0, 1023);
 
@@ -264,6 +274,8 @@ void bme280_task(void *arg)
     int64_t window_start_ms = esp_timer_get_time() / 1000;
 
     while (true) {
+        // Forced mode keeps the sensor asleep between samples and gives a clean
+        // point measurement for the five-minute average file.
         bme280_reading_t reading = {0};
         esp_err_t ret = bme280_read_forced(&reading);
         if (ret == ESP_OK && reading.valid) {
