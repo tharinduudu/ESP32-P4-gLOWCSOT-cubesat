@@ -50,10 +50,9 @@ static esp_err_t start_fpga_clock_hz(uint32_t hz)
         stop_fpga_clock();
     }
 
-#if READOUT_PROFILE_OCT2025
     if (hz == FPGA_RUNTIME_CLK_HZ) {
-        // The Oct-2025 FPGA image expects a real runtime clock after flashing.
-        // LEDC is fine for the programming clock, but CLKOUT is cleaner here.
+        // Some FPGA images count internally and expose only processed outputs,
+        // so keep a clean runtime clock available after configuration.
         esp_err_t ret = esp_clock_output_start(CLKOUT_SIG_CPLL, PIN_FPGA_CLK, &s_fpga_clkout);
         ESP_RETURN_ON_ERROR(ret, TAG, "route CPLL to FPGA clock pin");
         ret = esp_clock_output_set_divider(s_fpga_clkout, 8);
@@ -67,7 +66,6 @@ static esp_err_t start_fpga_clock_hz(uint32_t hz)
         ESP_LOGI(TAG, "FPGA runtime clock requested on GPIO%d using CPLL/8 for ~50 MHz", PIN_FPGA_CLK);
         return ESP_OK;
     }
-#endif
 
     ledc_timer_config_t timer = {
         .speed_mode = LEDC_LOW_SPEED_MODE,
@@ -277,14 +275,10 @@ esp_err_t program_fpga(void)
     }
     s_fpga_ok = true;
     ESP_LOGW(TAG, "iCE40 DONE is high");
-#if READOUT_PROFILE_OCT2025
     esp_err_t clock_ret = start_fpga_clock_hz(FPGA_RUNTIME_CLK_HZ);
     if (clock_ret != ESP_OK) {
         ESP_LOGW(TAG, "50 MHz FPGA runtime clock failed: %s", esp_err_to_name(clock_ret));
     }
-#else
-    stop_fpga_clock();
-#endif
     return ESP_OK;
 }
 

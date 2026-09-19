@@ -74,7 +74,7 @@
 #define FPGA_SPI_MODE           0
 #else
 #define FPGA_SPI_HZ             (1000 * 1000)
-#define FPGA_SPI_MODE           3
+#define FPGA_SPI_MODE           0
 #endif
 #define DAC_SPI_HZ              (500 * 1000)
 #define HV_SPI_HZ               (1000 * 1000)
