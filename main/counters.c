@@ -85,8 +85,9 @@ static void append_log_record(const uint32_t counts[COUNT_CHANNELS])
     sd_append_record(&record);
 }
 
-// End the current minute window, write the result, and print it over USB unless
-// the detector has entered quiet/power-saving mode.
+// End the current minute window, write the result, and print it over USB. The
+// USB line is intentionally kept alive in power-save mode so the detector can
+// be checked without turning Wi-Fi back on.
 void print_and_reset_counts(void)
 {
     if (!counting_is_enabled()) {
@@ -98,14 +99,12 @@ void print_and_reset_counts(void)
     snapshot_counts(snapshot, true);
     append_log_record(snapshot);
 
-    if (!s_power_save_mode) {
-        printf("counts,epoch=%lld,uptime_ms=%" PRId64, (long long)time(NULL), esp_timer_get_time() / 1000);
-        for (size_t i = 0; i < COUNT_CHANNELS; i++) {
-            printf(",%s=%" PRIu32, s_count_names[i], snapshot[i]);
-        }
-        printf("\n");
-        fflush(stdout);
+    printf("counts,epoch=%lld,uptime_ms=%" PRId64, (long long)time(NULL), esp_timer_get_time() / 1000);
+    for (size_t i = 0; i < COUNT_CHANNELS; i++) {
+        printf(",%s=%" PRIu32, s_count_names[i], snapshot[i]);
     }
+    printf("\n");
+    fflush(stdout);
 }
 
 // Background integration loop. It waits for HV to be stable, then records one
@@ -114,13 +113,26 @@ void counter_task(void *arg)
 {
     (void)arg;
     while (true) {
-        // Do not start the one-minute integration window until HV has settled.
-        // Otherwise the first row after startup would include bias ramp noise.
+        // Do not start the integration window until HV has settled. If HV drops
+        // during the minute, abandon that partial window and start over after
+        // the next settle period.
         while (!counting_is_enabled()) {
             clear_live_counts();
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
-        vTaskDelay(pdMS_TO_TICKS(COUNTER_PERIOD_MS));
-        print_and_reset_counts();
+
+        uint32_t elapsed_ms = 0;
+        while (elapsed_ms < COUNTER_PERIOD_MS) {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            if (!counting_is_enabled()) {
+                clear_live_counts();
+                break;
+            }
+            elapsed_ms += 1000;
+        }
+
+        if (elapsed_ms >= COUNTER_PERIOD_MS) {
+            print_and_reset_counts();
+        }
     }
 }
