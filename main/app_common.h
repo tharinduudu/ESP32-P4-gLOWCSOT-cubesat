@@ -132,8 +132,13 @@
 #define WIFI_AP_PASS            "glowcost"
 #define WIFI_AP_CHANNEL         6
 #define WIFI_AP_MAX_CONN        4
-#define WIFI_AUTO_OFF_MS        (20 * 1000)
+#define WIFI_AUTO_OFF_MS        (7 * 1000)
 #define FIELD_MIN_CPU_FREQ_MHZ  40
+#define BLE_ADV_INTERVAL_MS     1000
+#define BLE_PAYLOAD_UPDATE_MS   3000
+#define BLE_COMPANY_ID          0xFFFF
+#define BLE_PAYLOAD_VERSION     1
+#define BLE_DEVICE_NAME         "MuonP4"
 
 extern const uint8_t fpga_bin_start[] asm("_binary_fpga_bin_start");
 extern const uint8_t fpga_bin_end[] asm("_binary_fpga_bin_end");
@@ -253,6 +258,7 @@ void sd_append_record(const count_record_t *record);
 void sd_append_env_average(time_t epoch, uint32_t samples, double temp_c, double pressure_hpa, double humidity_pct);
 esp_err_t init_bme280(void);
 void bme280_task(void *arg);
+esp_err_t init_ble_broadcast(void);
 esp_err_t start_wifi_ap(void);
 esp_err_t start_webserver(void);
 void auto_power_save_task(void *arg);

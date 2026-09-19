@@ -44,6 +44,7 @@ The firmware is split into detector sections instead of keeping every subsystem 
 | `main/environment.c` | BME280 forced reads, 5-minute averages, and temperature compensation |
 | `main/web.c` | Embedded web UI, HTTP API, Wi-Fi AP, and power-saving web controls |
 | `main/console.c` | USB serial maintenance commands |
+| `main/ble_broadcast.c` | BLE live-count advertisements for the S3 quick-look display |
 
 Important constants live in `main/app_common.h`:
 
@@ -90,8 +91,9 @@ The main boot path is in `app_main()`:
 11. BME280 init.
 12. Counter task.
 13. Console task.
-14. Wi-Fi and HTTP server.
-15. Power management.
+14. BLE live-count broadcaster.
+15. Wi-Fi and HTTP server.
+16. Power management.
 
 ## Web UI
 
@@ -114,12 +116,32 @@ The web interface is embedded as a C string in `main/web.c`. The main API endpoi
 | `/api/power_save` | shut Wi-Fi off |
 | `/api/wifi_keep_on` | disable auto-off |
 
+## BLE Live Display
+
+The P4 firmware broadcasts live detector state through non-connectable BLE advertisements. The ESP32-S3-GEEK display firmware lives in:
+
+```text
+display/s3-geek-ble-display
+```
+
+Build and flash it separately:
+
+```sh
+cd display/s3-geek-ble-display
+idf.py set-target esp32s3
+idf.py build
+idf.py -p /dev/cu.usbmodem11301 flash monitor
+```
+
+The display does not connect to Wi-Fi. It passively scans for the P4 manufacturer-data packet and redraws the latest coincidence counts, raw counts, HV state, SD state, FPGA state, time-sync state, and RSSI.
+
 ## Power And Noise Notes
 
 The firmware is optimized for field operation:
 
 - Wi-Fi can be disabled after setup.
 - Wi-Fi auto-off runs when no client is connected.
+- The S3 quick-look display uses BLE advertisements instead of the Wi-Fi web API.
 - HV is cycled safely during Wi-Fi shutdown.
 - SD logging continues without Wi-Fi.
 - Serial minute count output is suppressed after power-saving mode starts.

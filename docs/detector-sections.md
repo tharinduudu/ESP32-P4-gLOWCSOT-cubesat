@@ -11,6 +11,8 @@ flowchart LR
     F --> C["ESP32-P4 interrupt counters"]
     C --> SD["microSD CSV logs"]
     C --> W["Wi-Fi web UI"]
+    C --> BLE["BLE live display"]
+    BLE --> DISP["ESP32-S3-GEEK screen"]
     BME["BME280"] --> C
     C --> DAC["DACx578"]
     C --> HV["MAX1932 HV supply"]
@@ -139,7 +141,21 @@ The web server can:
 - set DAC channels
 - enter power-saving mode
 
-## 9. Power-Saving Section
+## 9. BLE Live Display Section
+
+The P4 sends a compact non-connectable BLE advertisement containing the latest live counter snapshot. The S3 display scans passively and never opens a connection to the detector.
+
+This gives a quick `tail -f` style view without keeping the Wi-Fi access point active.
+
+| BLE field | Purpose |
+| --- | --- |
+| sequence | shows the packet is updating |
+| epoch | P4 time for the current snapshot |
+| seven counters | coincidence and raw live counts |
+| status byte | time, counting, FPGA, SD, and BME flags |
+| HV byte | current MAX1932 setting |
+
+## 10. Power-Saving Section
 
 After setup, Wi-Fi is the largest unnecessary load and a possible noise source. The firmware can shut it down while leaving counting and SD logging active.
 
@@ -161,7 +177,7 @@ sequenceDiagram
     ESP->>SD: Continue minute logging
 ```
 
-## 10. Raspberry Pi To ESP32-P4 Adaptation
+## 11. Raspberry Pi To ESP32-P4 Adaptation
 
 The Raspberry Pi project used:
 
@@ -182,4 +198,4 @@ The ESP32-P4 firmware implements these roles inside `main/main.c`:
 | `dac.py` | `dacx578_write_channel()` and `dac_set_channel()` |
 | `biasAdj.py` | `temp_compensate_dac()` |
 | `slowControl/main.cpp` | GPIO ISRs and `counter_task()` |
-| tailing logs | web UI, `/api/latest.txt`, SD downloads |
+| tailing logs | web UI, BLE S3 display, `/api/latest.txt`, SD downloads |

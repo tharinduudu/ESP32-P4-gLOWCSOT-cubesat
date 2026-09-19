@@ -58,6 +58,10 @@ void app_main(void)
         xTaskCreatePinnedToCore(bme280_task, "bme280_task", 4096, NULL, 5, NULL, 1);
     }
     xTaskCreatePinnedToCore(console_task, "console_task", 4096, NULL, 4, NULL, 1);
+    ret = init_ble_broadcast();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "BLE display broadcast disabled: %s", esp_err_to_name(ret));
+    }
 
     // Wi-Fi starts last so radio work does not overlap the sensitive FPGA/DAC/HV
     // startup sequence.

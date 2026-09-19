@@ -3,9 +3,9 @@ managed_components/
 .cache/
 .DS_Store
 sdkconfig.old
+display/*/sdkconfig
 *.elf
 *.bin.S
 *.map
 *.log
 *.tmp
-
