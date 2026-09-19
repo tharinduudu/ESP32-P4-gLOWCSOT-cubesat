@@ -186,7 +186,7 @@ static void ble_on_sync(void)
 
     s_ble_ready = true;
     refresh_advertisement();
-    ESP_LOGI(TAG, "BLE live-count broadcaster started");
+    ESP_LOGW(TAG, "BLE live-count broadcaster started");
 }
 
 // FreeRTOS task that runs the NimBLE host loop.

@@ -74,6 +74,7 @@ static uint16_t s_framebuffer[LCD_H_RES * LCD_V_RES];
 static portMUX_TYPE s_latest_mux = portMUX_INITIALIZER_UNLOCKED;
 static ble_count_packet_t s_latest;
 static uint8_t s_ble_own_addr_type;
+static bool s_logged_first_packet;
 
 void ble_store_config_init(void);
 static int ble_gap_event(struct ble_gap_event *event, void *arg);
@@ -346,6 +347,11 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg)
             parse_muon_payload(fields.mfg_data, fields.mfg_data_len, &packet)) {
             packet.rssi = event->disc.rssi;
             store_latest_packet(&packet);
+            if (!s_logged_first_packet) {
+                s_logged_first_packet = true;
+                ESP_LOGW(TAG, "first P4 BLE packet received: seq=%u rssi=%d hv=0x%02x status=0x%02x",
+                         packet.seq, packet.rssi, packet.hv, packet.status);
+            }
         }
         return 0;
     }
