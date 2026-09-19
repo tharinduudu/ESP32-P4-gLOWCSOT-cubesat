@@ -65,7 +65,7 @@
 #define PIN_SD_SPI_SCLK         GPIO_NUM_43  // Onboard microSD CLK
 #define PIN_SD_SPI_MOSI         GPIO_NUM_44  // Onboard microSD CMD / MOSI in SPI mode
 
-#define READOUT_PROFILE_OCT2025 1
+#define READOUT_PROFILE_OCT2025 0
 
 // The Oct-2025 PCB moved the threshold DAC onto I2C and expects a faster
 // FPGA configuration path than the older Pi HAT setup.
@@ -136,6 +136,7 @@
 #define FIELD_MIN_CPU_FREQ_MHZ  40
 #define BLE_ADV_INTERVAL_MS     1000
 #define BLE_PAYLOAD_UPDATE_MS   3000
+#define BLE_COUNT_SLOTS         7
 #define BLE_COMPANY_ID          0xFFFF
 #define BLE_PAYLOAD_VERSION     1
 #define BLE_DEVICE_NAME         "MuonP4"

@@ -46,9 +46,9 @@ static uint16_t clamp_count(uint32_t value)
     return value > UINT16_MAX ? UINT16_MAX : (uint16_t)value;
 }
 
-// Build the manufacturer data for one advertisement. The full legacy BLE
-// advertising packet is only 31 bytes, so this intentionally omits names and
-// text labels in favor of all seven live counters.
+// Build the manufacturer data for one advertisement. The display always expects
+// seven slots; the older readout has no triple-coincidence output, so that slot
+// is sent as zero and the raw channels stay in the same positions.
 static size_t fill_manufacturer_payload(uint8_t payload[26])
 {
     uint32_t counts[COUNT_CHANNELS];
@@ -98,8 +98,18 @@ static size_t fill_manufacturer_payload(uint8_t payload[26])
     put_u32(&payload[off], (uint32_t)epoch);
     off += 4;
 
-    for (size_t i = 0; i < COUNT_CHANNELS; i++) {
-        put_u16(&payload[off], clamp_count(counts[i]));
+#if READOUT_PROFILE_OCT2025
+    const uint32_t ble_counts[BLE_COUNT_SLOTS] = {
+        counts[0], counts[1], counts[2], counts[3], counts[4], counts[5], counts[6],
+    };
+#else
+    const uint32_t ble_counts[BLE_COUNT_SLOTS] = {
+        counts[0], counts[1], counts[2], 0, counts[3], counts[4], counts[5],
+    };
+#endif
+
+    for (size_t i = 0; i < BLE_COUNT_SLOTS; i++) {
+        put_u16(&payload[off], clamp_count(ble_counts[i]));
         off += 2;
     }
 

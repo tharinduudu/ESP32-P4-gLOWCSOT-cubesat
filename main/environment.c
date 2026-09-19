@@ -183,7 +183,7 @@ static esp_err_t bme280_read_forced(bme280_reading_t *out)
     return ESP_OK;
 }
 
-
+#if READOUT_PROFILE_OCT2025
 // Clamp a floating-point value into a closed range.
 static double clamp_double(double value, double lo, double hi)
 {
@@ -225,6 +225,7 @@ static uint16_t dac_vlow_to_code(double vlow)
     int code = (int)lrint(((clipped - TEMP_COMP_DAC_VOFF) / TEMP_COMP_DAC_SPAN) * 1023.0);
     return (uint16_t)clamp_int(code, 0, 1023);
 }
+#endif
 
 // Apply a slow temperature correction to the SiPM bias DACs after a stable
 // BME280 averaging window.

@@ -684,8 +684,8 @@ static void set_runtime_power_profile(void)
 #endif
 }
 
-// Shut the radio stack down for quiet battery operation, briefly cycling HV off
-// before restoring the detector.
+// Shut the radio stack down for quiet battery operation, then restart the
+// detector logic with HV safely off so post-Wi-Fi counting begins fresh.
 static void power_save_task(void *arg)
 {
     (void)arg;
@@ -725,16 +725,31 @@ static void power_save_task(void *arg)
 
     ESP_LOGW(TAG, "Wi-Fi is off; keeping HV off for 3 seconds");
     vTaskDelay(pdMS_TO_TICKS(3000));
-    // The short HV-off window was added after Wi-Fi activity showed up as noise.
-    // Counting is still gated by the normal HV settle delay when HV comes back.
+
+    ESP_LOGW(TAG, "Wi-Fi is off; reflashing FPGA and reloading DAC with HV off");
+    clear_live_counts();
+    ret = program_fpga();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "FPGA reflash after Wi-Fi shutdown failed: %s", esp_err_to_name(ret));
+        restore_hv = 0;
+    }
+    if (ret == ESP_OK) {
+        ret = dac_zero_channels();
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "DAC reload after Wi-Fi shutdown failed: %s", esp_err_to_name(ret));
+            restore_hv = 0;
+        }
+    }
+
+    // Counting is gated by the normal HV settle delay when HV comes back.
     if (restore_hv != 0) {
-        ESP_LOGW(TAG, "restoring HV byte 0x%02x after Wi-Fi shutdown", restore_hv);
+        ESP_LOGW(TAG, "restoring HV byte 0x%02x after quiet FPGA/DAC restart", restore_hv);
         ret = hv_write_and_settle(restore_hv);
         if (ret != ESP_OK) {
-            ESP_LOGW(TAG, "HV restore after Wi-Fi shutdown failed: %s", esp_err_to_name(ret));
+            ESP_LOGW(TAG, "HV restore after quiet restart failed: %s", esp_err_to_name(ret));
         }
     } else {
-        ESP_LOGW(TAG, "HV was already off before Wi-Fi shutdown; leaving it off");
+        ESP_LOGW(TAG, "HV remains off after Wi-Fi shutdown");
     }
 
     set_runtime_power_profile();

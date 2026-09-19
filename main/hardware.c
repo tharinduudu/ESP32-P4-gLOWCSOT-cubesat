@@ -300,6 +300,7 @@ static esp_err_t dac_write(uint8_t reg, uint16_t value)
 }
 #endif
 
+#if READOUT_PROFILE_OCT2025
 // Write one channel on the Oct-2025 I2C DAC, accepting the same 10-bit value
 // scale used by the older firmware.
 static esp_err_t dacx578_write_channel(uint8_t ch, uint16_t code10)
@@ -320,6 +321,7 @@ static esp_err_t dacx578_write_channel(uint8_t ch, uint16_t code10)
     };
     return i2c_master_write_to_device(BME280_I2C_PORT, DACX578_ADDR, data, sizeof(data), pdMS_TO_TICKS(100));
 }
+#endif
 
 // Set one DAC channel and mirror the value in RAM for status and compensation.
 esp_err_t dac_set_channel(uint8_t ch, uint16_t value)
