@@ -132,8 +132,9 @@
 #define WIFI_AP_PASS            "glowcost"
 #define WIFI_AP_CHANNEL         6
 #define WIFI_AP_MAX_CONN        4
-#define WIFI_AUTO_OFF_MS        (7 * 1000)
+#define WIFI_AUTO_OFF_MS        (20 * 1000)
 #define FIELD_MIN_CPU_FREQ_MHZ  40
+#define ENABLE_BLE_DISPLAY      0
 #define BLE_ADV_INTERVAL_MS     1000
 #define BLE_PAYLOAD_UPDATE_MS   3000
 #define BLE_COUNT_SLOTS         7
