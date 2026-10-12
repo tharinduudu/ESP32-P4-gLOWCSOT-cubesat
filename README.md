@@ -2,39 +2,29 @@
 
 ESP-IDF firmware for running a gLOWCOST/MPPC cosmic-muon detector readout on a Waveshare ESP32-P4 Module DEV KIT. It adapts the Raspberry Pi HAT readout workflow to the ESP32-P4 40-pin header, including FPGA programming, high-voltage control, DAC threshold setup, one-minute count logging, BME280 environment logging, a Wi-Fi setup page, and an optional ESP32-S3-GEEK BLE live display.
 
-## Quick Start
+## Quick Start: Using The Detector
 
-### 1. Hardware Setup
+This is the normal field-use procedure for an already-built detector.
 
-1. Plug the readout PCB onto the ESP32-P4 40-pin header.
-2. Insert a FAT32-formatted microSD card.
-3. Connect the optional BME280 to the I2C header.
-4. Connect scintillators/SiPMs only while the detector is powered off or HV is off.
-5. Power the ESP32-P4 from USB or a power bank.
+### 1. Power Up
 
-Add setup photos here when ready:
+1. Insert a FAT32-formatted microSD card before power-up.
+2. Power the ESP32-P4 from a USB power bank.
+3. Leave the detector still for startup.
+4. Wait for the firmware to flash the FPGA, set the DAC/HV values, and finish the 10-second HV settle delay.
+5. A new muon data file and environment file are created on the SD card for each detector start.
 
-- `docs/assets/detector-assembled.jpg`
-- `docs/assets/readout-pcb-mounted.jpg`
-- `docs/assets/bme280-and-sd-card.jpg`
+At boot the firmware turns HV off first, programs the FPGA, sets the DACs, turns HV on, waits 10 seconds, then starts recording. This avoids logging startup noise as detector data.
 
-### 2. Flash The ESP32-P4
+Add field-use photos here when ready:
 
-```sh
-idf.py set-target esp32p4
-idf.py build
-idf.py -p /dev/cu.usbmodem1101 flash
-```
+- `docs/assets/power-bank-run.jpg`
+- `docs/assets/detector-in-use.jpg`
+- `docs/assets/sd-card-ready.jpg`
 
-If your Mac gives the board a different serial port, check with:
+### 2. Open The Web Page
 
-```sh
-ls /dev/cu.usbmodem*
-```
-
-### 3. Open The Web Page
-
-After flashing or power-up, connect your phone or computer to:
+After power-up, connect your phone or computer to:
 
 | Field | Value |
 | --- | --- |
@@ -44,23 +34,34 @@ After flashing or power-up, connect your phone or computer to:
 
 The browser automatically syncs time to the detector. If the SD file started as `muon_unsynced_...csv`, it is renamed after browser time sync using the reconstructed run-start timestamp.
 
-### 4. Start A Run
+### 3. Check The Run
 
 1. Confirm the web page shows **SD Card Ready**.
-2. Check the live one-minute coincidence counts.
-3. Add a run label if useful, such as location, flight number, or test name.
-4. Let Wi-Fi turn off automatically, or press **Turn Wi-Fi Off** for quieter data and better battery life.
-5. Leave the detector powered. Counts continue logging to the SD card while Wi-Fi is off.
+2. Confirm FPGA status is good and HV is on.
+3. Check the highlighted live one-minute coincidence counts.
+4. Add a run label if useful, such as location, flight number, or test name.
+5. Download a quick file only if needed.
+
+### 4. Run Quietly On Battery
+
+Wi-Fi can add noise, so use it only for setup and quick checks.
+
+1. After the SD card, time, label, and counts look good, press **Turn Wi-Fi Off** or let Wi-Fi auto-off.
+2. The firmware briefly turns HV off during Wi-Fi shutdown, then turns HV back on and waits for the normal settle delay.
+3. The detector keeps counting and logging to the SD card while Wi-Fi is off.
+4. Leave the power bank connected for the full run.
+
+To access the web page again after Wi-Fi has been turned off, power-cycle the detector. A new run file will be created on the next start.
 
 ### 5. Download Data
 
-Use the web page to download:
+For web downloads, connect to `MuonReadout` while Wi-Fi is active and use:
 
-- the current muon count file
-- the current BME280 environment file
-- previous `.csv` and `.log` files from the SD card, newest first
+- **Download Current File** for the active muon count file
+- **Download Environment File** for the active BME280 file
+- **Previous SD Files** for older `.csv` and `.log` files, newest first
 
-For a USB serial quick check:
+For a USB serial quick check from a Mac:
 
 ```sh
 python3 -m serial.tools.miniterm /dev/cu.usbmodem1101 115200
@@ -74,6 +75,22 @@ counts
 sd status
 sd tail current 20
 sd list
+```
+
+## Updating Firmware
+
+Normal detector use does not require reflashing. Use this only when installing a new firmware version.
+
+```sh
+idf.py set-target esp32p4
+idf.py build
+idf.py -p /dev/cu.usbmodem1101 flash
+```
+
+If your Mac gives the board a different serial port, check with:
+
+```sh
+ls /dev/cu.usbmodem*
 ```
 
 ## Important Safety Behavior
