@@ -1,6 +1,114 @@
 # ESP32-P4 gLOWCOST CubeSat Muon Readout
 
-This repository contains ESP-IDF firmware for running a gLOWCOST/MPPC cosmic-muon detector readout on a Waveshare ESP32-P4 Module DEV KIT. The firmware adapts the Raspberry Pi HAT readout workflow to the ESP32-P4 40-pin header, including FPGA programming, high-voltage control, DAC threshold setup, one-minute count logging, BME280 environment logging, a small Wi-Fi setup interface, and a BLE live display link for an ESP32-S3-GEEK screen.
+ESP-IDF firmware for running a gLOWCOST/MPPC cosmic-muon detector readout on a Waveshare ESP32-P4 Module DEV KIT. It adapts the Raspberry Pi HAT readout workflow to the ESP32-P4 40-pin header, including FPGA programming, high-voltage control, DAC threshold setup, one-minute count logging, BME280 environment logging, a Wi-Fi setup page, and an optional ESP32-S3-GEEK BLE live display.
+
+## Quick Start
+
+### 1. Hardware Setup
+
+1. Plug the readout PCB onto the ESP32-P4 40-pin header.
+2. Insert a FAT32-formatted microSD card.
+3. Connect the optional BME280 to the I2C header.
+4. Connect scintillators/SiPMs only while the detector is powered off or HV is off.
+5. Power the ESP32-P4 from USB or a power bank.
+
+Add setup photos here when ready:
+
+- `docs/assets/detector-assembled.jpg`
+- `docs/assets/readout-pcb-mounted.jpg`
+- `docs/assets/bme280-and-sd-card.jpg`
+
+### 2. Flash The ESP32-P4
+
+```sh
+idf.py set-target esp32p4
+idf.py build
+idf.py -p /dev/cu.usbmodem1101 flash
+```
+
+If your Mac gives the board a different serial port, check with:
+
+```sh
+ls /dev/cu.usbmodem*
+```
+
+### 3. Open The Web Page
+
+After flashing or power-up, connect your phone or computer to:
+
+| Field | Value |
+| --- | --- |
+| Wi-Fi SSID | `MuonReadout` |
+| Wi-Fi password | `glowcost` |
+| Web page | `http://192.168.4.1` |
+
+The browser automatically syncs time to the detector. If the SD file started as `muon_unsynced_...csv`, it is renamed after browser time sync using the reconstructed run-start timestamp.
+
+### 4. Start A Run
+
+1. Confirm the web page shows **SD Card Ready**.
+2. Check the live one-minute coincidence counts.
+3. Add a run label if useful, such as location, flight number, or test name.
+4. Let Wi-Fi turn off automatically, or press **Turn Wi-Fi Off** for quieter data and better battery life.
+5. Leave the detector powered. Counts continue logging to the SD card while Wi-Fi is off.
+
+### 5. Download Data
+
+Use the web page to download:
+
+- the current muon count file
+- the current BME280 environment file
+- previous `.csv` and `.log` files from the SD card, newest first
+
+For a USB serial quick check:
+
+```sh
+python3 -m serial.tools.miniterm /dev/cu.usbmodem1101 115200
+```
+
+Useful serial commands:
+
+```text
+status
+counts
+sd status
+sd tail current 20
+sd list
+```
+
+## Important Safety Behavior
+
+This detector controls high voltage. The firmware turns HV off before startup transitions, FPGA flashing, and Wi-Fi shutdown/restart operations. Counting is disabled while HV is off or settling.
+
+Do not connect or disconnect scintillator/SiPM hardware while HV is enabled. Power down or turn HV off first.
+
+## Current Operating Settings
+
+| Setting | Current value |
+| --- | --- |
+| FPGA bitstream | `top_50MHz_led100_dt200_pi10us.bin` embedded as `main/fpga.bin` |
+| HV byte | `0xea` |
+| HV settle delay | 10 seconds |
+| DACx578 address | `0x47` |
+| SiPM DAC channels 0-3 | `0x2f1` |
+| Threshold DAC channels 4-7 | `0x080` |
+| Count interval | 60 seconds |
+| Environment interval | 5-minute averages |
+| Wi-Fi SSID | `MuonReadout` |
+| Wi-Fi password | `glowcost` |
+| Wi-Fi auto-off | 7 seconds if no client is connected |
+| BLE display name | `MuonP4` |
+
+## Web Interface
+
+The web page highlights SD-card readiness, live one-minute coincident counts, HV/FPGA/DAC controls, environment readings, current log downloads, and previous SD files.
+
+![ESP32-P4 muon readout web interface](docs/assets/webserver-screenshot.png)
+
+Add phone/laptop web UI photos here when ready:
+
+- `docs/assets/web-ui-phone.jpg`
+- `docs/assets/live-counts-display.jpg`
 
 The active profile is adapted from `tharinduudu/mppcInterface-Oct-2025` for the new layout 3v0 readout. The current Pi reference snapshot checked during ESP32 sync was commit `9c9868d`.
 
@@ -33,21 +141,7 @@ At boot, the ESP32-P4:
 9. Starts BLE live-count advertisements for the S3 screen display.
 10. Automatically turns Wi-Fi off after the setup window when no client is connected, while SD logging, counting, and BLE live display continue.
 
-## Quick Start
-
-Flash the ESP32-P4:
-
-```sh
-idf.py set-target esp32p4
-idf.py build
-idf.py -p /dev/cu.usbmodem5B5E1289611 flash monitor
-```
-
-Connect to the setup web page:
-
-- SSID: `MuonReadout`
-- Password: `glowcost`
-- URL: `http://192.168.4.1`
+## Optional S3-GEEK Display
 
 Flash the optional ESP32-S3-GEEK BLE display:
 
@@ -57,25 +151,6 @@ idf.py set-target esp32s3
 idf.py build
 idf.py -p /dev/cu.usbmodem11301 flash monitor
 ```
-
-## Web Interface
-
-The web page highlights SD-card readiness, live one-minute coincident counts, HV/FPGA/DAC controls, environment readings, current log downloads, and previous SD files.
-
-![ESP32-P4 muon readout web interface](docs/assets/webserver-screenshot.png)
-
-For a field run:
-
-1. Insert the SD card.
-2. Power the detector from USB or a power bank.
-3. Connect to `MuonReadout`.
-4. Open `http://192.168.4.1`.
-5. Check that SD card status says ready.
-6. Let browser time sync automatically.
-7. Add a run label if useful, such as location or flight number.
-8. Check live counts briefly on the web page or the S3 BLE display.
-9. Use power-saving mode or let Wi-Fi auto-off.
-10. Leave the detector running; data continues logging to SD and the S3 display can keep showing live BLE snapshots.
 
 ## Guides
 
@@ -124,29 +199,6 @@ docs/
 ```
 
 Generated folders such as `build/` and `managed_components/` are intentionally ignored.
-
-## Safety Notes
-
-This detector controls high voltage. The firmware intentionally turns HV off before FPGA flashing, Wi-Fi shutdown, and startup transitions. Counting is disabled while HV is off or settling.
-
-Do not connect or disconnect scintillator/SiPM hardware while HV is enabled. Power down or turn HV off first.
-
-## Known Good Settings
-
-| Setting | Current value |
-| --- | --- |
-| FPGA bitstream | `top_50MHz_led100_dt200_pi10us.bin` embedded as `main/fpga.bin` |
-| HV byte | `0xea` |
-| HV settle delay | 10 seconds |
-| DACx578 address | `0x47` |
-| SiPM DAC channels 0-3 | `0x2f1` |
-| Threshold DAC channels 4-7 | `0x080` |
-| Count interval | 60 seconds |
-| Environment interval | 5-minute averages |
-| Wi-Fi SSID | `MuonReadout` |
-| Wi-Fi password | `glowcost` |
-| Wi-Fi auto-off | 7 seconds if no client is connected |
-| BLE display name | `MuonP4` |
 
 ## Current Status
 
