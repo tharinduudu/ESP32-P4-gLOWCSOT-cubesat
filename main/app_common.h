@@ -214,6 +214,8 @@ extern volatile bool s_counting_enabled;
 extern int64_t s_hv_settle_until_ms;
 extern bool s_fpga_ok;
 extern bool s_time_set;
+extern bool s_browser_tz_valid;
+extern int32_t s_browser_tz_offset_min;
 extern bool s_sd_mounted;
 extern bool s_power_save_mode;
 extern bool s_wifi_keep_on;

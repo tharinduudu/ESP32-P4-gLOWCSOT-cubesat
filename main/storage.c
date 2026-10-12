@@ -45,13 +45,31 @@ void url_decode_in_place(char *s)
 // not received browser time yet.
 void csv_time_string(time_t epoch, char *out, size_t out_len)
 {
-    if (epoch > 1600000000) {
-        struct tm tm;
-        localtime_r(&epoch, &tm);
-        strftime(out, out_len, "%Y-%m-%dT%H:%M:%S", &tm);
-    } else {
+    bool time_set;
+    bool tz_valid;
+    int32_t tz_offset_min;
+
+    portENTER_CRITICAL(&s_state_mux);
+    time_set = s_time_set;
+    tz_valid = s_browser_tz_valid;
+    tz_offset_min = s_browser_tz_offset_min;
+    portEXIT_CRITICAL(&s_state_mux);
+
+    if (!time_set || epoch <= 1600000000) {
         snprintf(out, out_len, "unset");
+        return;
     }
+
+    // JavaScript timezone offset is UTC - local, in minutes. Shift the epoch
+    // before formatting so the CSV ISO field matches the browser clock.
+    int64_t display_epoch = (int64_t)epoch;
+    if (tz_valid) {
+        display_epoch -= (int64_t)tz_offset_min * 60;
+    }
+    time_t display_time = (time_t)display_epoch;
+    struct tm tm;
+    gmtime_r(&display_time, &tm);
+    strftime(out, out_len, "%Y-%m-%dT%H:%M:%S", &tm);
 }
 
 // Build the muon-count CSV header from the active channel list.
@@ -74,11 +92,11 @@ void count_csv_header(char *out, size_t out_len)
 static void sd_build_candidate_path(const char *prefix, char *path, size_t path_len, unsigned suffix)
 {
     char stem[80];
-    // Before browser time sync, create an "unsynced" file. Once time arrives,
-    // the active files are renamed so the final run has a real start timestamp.
+    // Before browser time sync, create an "unsynced" file. Once browser time
+    // arrives, the active files are renamed with that operator-provided time.
     if (s_run_start_epoch > 1600000000) {
         struct tm tm;
-        localtime_r(&s_run_start_epoch, &tm);
+        gmtime_r(&s_run_start_epoch, &tm);
         char when[32];
         strftime(when, sizeof(when), "%Y%m%d_%H%M%S", &tm);
         snprintf(stem, sizeof(stem), "%s_%s", prefix, when);

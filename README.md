@@ -32,7 +32,7 @@ After power-up, connect your phone or computer to:
 | Wi-Fi password | `glowcost` |
 | Web page | `http://192.168.4.1` |
 
-The browser automatically syncs time to the detector. If the SD file started as `muon_unsynced_...csv`, it is renamed after browser time sync using the reconstructed run-start timestamp.
+The browser automatically syncs time to the detector. The first browser sync in each boot renames the active SD files using the browser's local clock time.
 
 ### 3. Check The Run
 

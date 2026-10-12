@@ -29,6 +29,8 @@ volatile bool s_counting_enabled;
 int64_t s_hv_settle_until_ms;
 bool s_fpga_ok;
 bool s_time_set;
+bool s_browser_tz_valid;
+int32_t s_browser_tz_offset_min;
 bool s_sd_mounted;
 bool s_power_save_mode;
 bool s_wifi_keep_on;

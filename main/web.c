@@ -41,9 +41,10 @@ static const char s_index_html[] =
 "let h='<tr><th>channel</th><th>current</th><th>last minute</th><th>total</th></tr>'; j.channels.forEach(c=>h+='<tr><td>'+esc(c.name)+'</td><td>'+c.current+'</td><td>'+c.last+'</td><td>'+c.total+'</td></tr>'); document.getElementById('counts').innerHTML=h;"
 "let l='<tr><th>time</th>'; j.channels.forEach(c=>l+='<th>'+esc(c.name)+'</th>'); l+='</tr>'; j.records.forEach(r=>{l+='<tr><td>'+fmtEpoch(r.epoch)+'</td>'; r.counts.forEach(v=>l+='<td>'+v+'</td>'); l+='</tr>'}); document.getElementById('log').innerHTML=l;"
 "}catch(e){document.getElementById('status').textContent=e.message}finally{refreshBusy=false}}"
-"async function syncTime(){await api('/api/time?epoch='+Math.floor(Date.now()/1000)); refresh()}"
-"async function autoSyncTime(){let e=Math.floor(Date.now()/1000); if(e>1600000000){try{await api('/api/time?epoch='+e)}catch(err){}} refresh()}"
-"async function setManualTime(){let v=document.getElementById('manualTime').value; if(v) {await api('/api/time?epoch='+Math.floor(new Date(v).getTime()/1000)); refresh()}}"
+"function timeSyncUrl(d){return '/api/time?epoch='+Math.floor(d.getTime()/1000)+'&tzoff='+d.getTimezoneOffset()}"
+"async function syncTime(){await api(timeSyncUrl(new Date())); refresh()}"
+"async function autoSyncTime(){let d=new Date(); let e=Math.floor(d.getTime()/1000); if(e>1600000000){try{await api(timeSyncUrl(d))}catch(err){}} refresh()}"
+"async function setManualTime(){let v=document.getElementById('manualTime').value; if(v) {await api(timeSyncUrl(new Date(v))); refresh()}}"
 "async function setRunLabel(){await api('/api/run_label?label='+encodeURIComponent(document.getElementById('runLabel').value)); refresh()}"
 "async function loadSdFiles(){try{let j=await (await api('/api/sd_files')).json(); let h='<table><tr><th>file</th><th>modified</th><th>bytes</th><th></th></tr>'; j.files.forEach(f=>{h+='<tr><td>'+esc(f.name)+(f.current?' *':'')+'</td><td>'+esc(f.modified||'--')+'</td><td>'+f.size+'</td><td><a href=\"/api/sd_file?name='+encodeURIComponent(f.name)+'\">download</a></td></tr>'}); h+='</table>'; document.getElementById('sdFiles').innerHTML=h}catch(e){document.getElementById('sdFiles').textContent=e.message}}"
 "async function setHv(){await api('/api/hv?byte='+encodeURIComponent(document.getElementById('hvByte').value)); refresh()}"
@@ -271,8 +272,8 @@ static esp_err_t latest_txt_handler(httpd_req_t *req)
 }
 
 // Check whether either active SD filename still carries the temporary unsynced
-// stem. This lets a later browser sync repair filenames even if an earlier
-// sync happened while the SD card was still mounting.
+// stem. This lets a later browser sync repair filenames even if the SD card
+// came up after the first sync attempt.
 static bool active_sd_name_needs_time_sync(void)
 {
     bool needs_sync = false;
@@ -287,8 +288,9 @@ static bool active_sd_name_needs_time_sync(void)
     return needs_sync;
 }
 
-// Accept browser time from the web page and repair the run start timestamp if
-// the detector booted before time was known.
+// Accept browser time from the web page. The first browser sync in a boot also
+// renames the active SD files with that browser timestamp, because the ESP RTC
+// can contain stale time from an earlier run.
 static esp_err_t time_handler(httpd_req_t *req)
 {
     char value[24];
@@ -299,26 +301,44 @@ static esp_err_t time_handler(httpd_req_t *req)
     if (epoch < 1600000000LL) {
         return text_response(req, "epoch too small");
     }
+    char tz_value[16];
+    long long tz_offset_min = 0;
+    bool have_tz_offset = query_value(req, "tzoff", tz_value, sizeof(tz_value));
+    if (have_tz_offset) {
+        tz_offset_min = atoll(tz_value);
+        if (tz_offset_min < -1440 || tz_offset_min > 1440) {
+            have_tz_offset = false;
+        }
+    }
     struct timeval tv = {
         .tv_sec = (time_t)epoch,
         .tv_usec = 0,
     };
+    bool was_time_set;
+    bool needs_filename_sync = active_sd_name_needs_time_sync();
+
+    portENTER_CRITICAL(&s_state_mux);
+    was_time_set = s_time_set;
+    portEXIT_CRITICAL(&s_state_mux);
+
     ESP_RETURN_ON_ERROR(settimeofday(&tv, NULL), TAG, "set time");
     portENTER_CRITICAL(&s_state_mux);
     s_time_set = true;
+    if (have_tz_offset) {
+        s_browser_tz_valid = true;
+        s_browser_tz_offset_min = (int32_t)tz_offset_min;
+    }
     portEXIT_CRITICAL(&s_state_mux);
 
-    // If this run started before the phone/browser set time, reconstruct the
-    // likely boot timestamp and rename the active files to match it. If a
-    // previous rename failed because the SD card was still mounting, retry
-    // while the active filename still says "unsynced".
-    if (s_run_start_epoch <= 1600000000 || active_sd_name_needs_time_sync()) {
-        int64_t elapsed_ms = (esp_timer_get_time() / 1000) - s_run_start_uptime_ms;
-        if (elapsed_ms < 0) {
-            elapsed_ms = 0;
+    // Use the browser's wall-clock time for the filename. The epoch still sets
+    // the detector clock correctly; the timezone offset only makes the filename
+    // look like the phone/computer clock the operator just used.
+    if (!was_time_set || needs_filename_sync) {
+        long long filename_epoch = epoch;
+        if (have_tz_offset) {
+            filename_epoch -= tz_offset_min * 60;
         }
-        int64_t elapsed_s = elapsed_ms / 1000;
-        s_run_start_epoch = (time_t)(epoch - elapsed_s);
+        s_run_start_epoch = (time_t)filename_epoch;
         esp_err_t ret = sd_refresh_log_path();
         if (ret != ESP_OK) {
             ESP_LOGW(TAG, "SD log rename after time sync failed: %s", esp_err_to_name(ret));

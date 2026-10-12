@@ -26,8 +26,8 @@ If the filename already exists, a suffix such as `_01` is added.
 
 If the SD card is mounted before browser time is known, the firmware starts
 with an `unsynced` filename and renames the active muon and environment files
-after browser time sync. If time sync happens while the SD card is still
-mounting, the next browser sync retries the rename.
+using the browser's local clock timestamp. If time sync happens while the SD
+card is still mounting, the next browser sync retries the rename.
 
 ## Muon CSV Columns
 
@@ -38,7 +38,7 @@ epoch,iso,ch01_p13,ch02_p12,ch12_p11,ch012_p22,gpio6_p31,gpio5_p29,gpio16_p36
 | Column | Meaning |
 | --- | --- |
 | `epoch` | Unix time in seconds since 1970-01-01 UTC |
-| `iso` | readable timestamp |
+| `iso` | browser-local readable timestamp after time sync, or `unset` before sync |
 | `ch01_p13` | CH0 and CH1 coincidence |
 | `ch02_p12` | CH0 and CH2 coincidence |
 | `ch12_p11` | CH1 and CH2 coincidence |
