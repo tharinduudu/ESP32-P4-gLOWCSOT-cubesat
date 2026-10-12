@@ -12,7 +12,7 @@ The active profile is adapted from `tharinduudu/mppcInterface-Oct-2025` for the 
 - Active FPGA bitstream: `top_50MHz_led100_dt200_pi10us.bin` from the Oct-2025 readout repository.
 - High voltage: MAX1932 controlled over SPI, startup byte `0xf9`.
 - DAC: DACx578 on I2C address `0x47`.
-- Startup DAC values: channels 0-3 at `0x1eb`; threshold channels 4-7 at `0x080`.
+- Startup DAC values: channels 0-3 at `0x1eb`; threshold channels 4-7 at `0x040`.
 - Bias target: MAX1932 `0xf9` predicts about 54.94 V high side, DAC `0x1eb` predicts about 1.44 V low side, for about 53.5 V effective bias at 20 C.
 - Environment sensor: optional BME280 on I2C `0x76` or `0x77`.
 - Storage: onboard microSD card in SPI mode.
@@ -140,7 +140,7 @@ Do not connect or disconnect scintillator/SiPM hardware while HV is enabled. Pow
 | HV settle delay | 10 seconds |
 | DACx578 address | `0x47` |
 | SiPM DAC channels 0-3 | `0x1eb` |
-| Threshold DAC channels 4-7 | `0x080` |
+| Threshold DAC channels 4-7 | `0x040` |
 | Count interval | 60 seconds |
 | Environment interval | 5-minute averages |
 | Wi-Fi SSID | `MuonReadout` |

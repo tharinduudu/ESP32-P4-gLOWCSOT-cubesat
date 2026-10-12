@@ -49,7 +49,7 @@ static const char s_index_html[] =
 "async function setHv(){await api('/api/hv?byte='+encodeURIComponent(document.getElementById('hvByte').value)); refresh()}"
 "async function hvOff(){await api('/api/hv?off=1'); refresh()}"
 "async function flashFpga(){if(confirm('This will turn HV off, flash the FPGA, reload startup DAC values, then turn HV back on after the normal settle.')){await api('/api/fpga'); refresh()}}"
-"async function dacZero(){for(let i=0;i<4;i++) await api('/api/dac?ch='+i+'&value=01eb'); for(let i=4;i<8;i++) await api('/api/dac?ch='+i+'&value=0080'); refresh()}"
+"async function dacZero(){for(let i=0;i<4;i++) await api('/api/dac?ch='+i+'&value=01eb'); for(let i=4;i<8;i++) await api('/api/dac?ch='+i+'&value=0040'); refresh()}"
 "async function setDac(){await api('/api/dac?ch='+document.getElementById('dacCh').value+'&value='+document.getElementById('dacVal').value); refresh()}"
 "async function keepWifiOn(){await api('/api/wifi_keep_on?enable=1'); refresh()}"
 "async function allowWifiAutoOff(){await api('/api/wifi_keep_on?enable=0'); refresh()}"

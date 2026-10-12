@@ -111,7 +111,7 @@
 // 1.44 V low side, for roughly 53.5 V effective bias at 20 C.
 #define STARTUP_HV_BYTE         0xF9
 #define STARTUP_DAC_CODE        0x1EB
-#define STARTUP_DAC_THRESHOLD_CODE 0x080
+#define STARTUP_DAC_THRESHOLD_CODE 0x040
 #define DACX578_ADDR            0x47
 #else
 #define COUNT_CHANNELS          6
