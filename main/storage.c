@@ -235,6 +235,17 @@ esp_err_t init_sd_card(void)
     return ret;
 }
 
+// Mount SD in the background so the web UI can come up immediately after boot.
+void sd_startup_task(void *arg)
+{
+    (void)arg;
+    esp_err_t ret = init_sd_card();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "SD logging disabled: %s", esp_err_to_name(ret));
+    }
+    vTaskDelete(NULL);
+}
+
 // Append one completed one-minute detector record to the active muon CSV file.
 void sd_append_record(const count_record_t *record)
 {

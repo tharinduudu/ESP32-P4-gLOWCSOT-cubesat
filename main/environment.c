@@ -120,6 +120,20 @@ esp_err_t init_bme280(void)
     return ESP_OK;
 }
 
+// Probe BME280 after the detector startup path has finished using the shared
+// I2C bus for the DAC. The web page can still load while this is happening.
+void bme280_startup_task(void *arg)
+{
+    (void)arg;
+    esp_err_t ret = init_bme280();
+    if (ret == ESP_OK) {
+        xTaskCreatePinnedToCore(bme280_task, "bme280_task", 4096, NULL, 5, NULL, 1);
+    } else {
+        ESP_LOGW(TAG, "environment logging disabled until BME280 is detected: %s", esp_err_to_name(ret));
+    }
+    vTaskDelete(NULL);
+}
+
 // Trigger one forced BME280 measurement and convert the raw result into
 // engineering units using the stored calibration coefficients.
 static esp_err_t bme280_read_forced(bme280_reading_t *out)

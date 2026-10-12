@@ -136,7 +136,7 @@
 #define WIFI_AP_PASS            "glowcost"
 #define WIFI_AP_CHANNEL         6
 #define WIFI_AP_MAX_CONN        4
-#define WIFI_AUTO_OFF_MS        (7 * 1000)
+#define WIFI_AUTO_OFF_MS        (30 * 1000)
 #define FIELD_MIN_CPU_FREQ_MHZ  40
 #define BLE_ADV_INTERVAL_MS     1000
 #define BLE_PAYLOAD_UPDATE_MS   3000
@@ -258,9 +258,11 @@ void count_csv_header(char *out, size_t out_len);
 esp_err_t sd_refresh_log_path_locked(void);
 esp_err_t sd_refresh_log_path(void);
 esp_err_t init_sd_card(void);
+void sd_startup_task(void *arg);
 void sd_append_record(const count_record_t *record);
 void sd_append_env_average(time_t epoch, uint32_t samples, double temp_c, double pressure_hpa, double humidity_pct);
 esp_err_t init_bme280(void);
+void bme280_startup_task(void *arg);
 void bme280_task(void *arg);
 esp_err_t init_ble_broadcast(void);
 esp_err_t start_wifi_ap(void);

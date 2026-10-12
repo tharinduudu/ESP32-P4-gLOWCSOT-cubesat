@@ -32,7 +32,7 @@ static const char s_index_html[] =
 "async function api(u){let r=await fetch(u); if(!r.ok) throw new Error(await r.text()); return r}"
 "function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}"
 "function fmtEpoch(e){return e>1600000000?new Date(e*1000).toLocaleString():'not set'}"
-"async function refresh(){try{let j=await (await api('/api/status')).json(); document.getElementById('clock').textContent=fmtEpoch(j.epoch)+' / '+Math.round(j.uptime_ms/1000)+'s';"
+"let refreshBusy=false; async function refresh(){if(refreshBusy)return; refreshBusy=true; try{let j=await (await api('/api/status')).json(); document.getElementById('clock').textContent=fmtEpoch(j.epoch)+' / '+Math.round(j.uptime_ms/1000)+'s';"
 "let sdBadge=document.getElementById('sdBadge'); sdBadge.className='badge '+(j.sd_mounted?'okBg':'badBg'); sdBadge.querySelector('.badgeValue').innerHTML=j.sd_mounted?'<span class=\"ok\">Ready</span>':'<span class=\"bad\">Not Ready</span>'; document.getElementById('sdBadgeFile').textContent=j.sd_mounted?(j.log_file||'mounted, no file'):'check card / slot';"
 "document.getElementById('status').innerHTML='<p>AP <span class=\"mono\">'+j.ssid+'</span> at <span class=\"mono\">http://192.168.4.1</span></p><p>Power saving: '+(j.power_save_mode?'on':'off')+'</p><p>Wi-Fi auto-off: '+(j.wifi_keep_on?'disabled':'enabled')+'</p><p>FPGA DONE: <b class=\"'+(j.fpga_done?'ok':'bad')+'\">'+j.fpga_done+'</b></p><p>HV byte: <span class=\"mono\">0x'+j.hv_byte+'</span></p><p>Counting: '+(j.counting_enabled?'enabled':'settling/off')+'</p><p>HV settle remaining: '+Math.max(0,Math.ceil(j.hv_settle_remaining_ms/1000))+'s</p><p>Time: '+(j.time_set?'set':'not set')+'</p>';"
 "document.getElementById('sdlog').innerHTML='<p>SD: '+(j.sd_mounted?'mounted':'not mounted')+'</p><p>File: <span class=\"mono\">'+esc(j.log_file||'none')+'</span></p><p>Label: <span class=\"mono\">'+esc(j.run_label||'')+'</span></p>';"
@@ -40,7 +40,7 @@ static const char s_index_html[] =
 "let cards=''; j.channels.forEach(c=>cards+='<div class=\"countCard\"><div class=\"countName\">'+esc(c.name)+'</div><div class=\"countValue\">'+c.last+'</div><div class=\"countMeta\">current '+c.current+' / total '+c.total+'</div></div>'); document.getElementById('countCards').innerHTML=cards;"
 "let h='<tr><th>channel</th><th>current</th><th>last minute</th><th>total</th></tr>'; j.channels.forEach(c=>h+='<tr><td>'+esc(c.name)+'</td><td>'+c.current+'</td><td>'+c.last+'</td><td>'+c.total+'</td></tr>'); document.getElementById('counts').innerHTML=h;"
 "let l='<tr><th>time</th>'; j.channels.forEach(c=>l+='<th>'+esc(c.name)+'</th>'); l+='</tr>'; j.records.forEach(r=>{l+='<tr><td>'+fmtEpoch(r.epoch)+'</td>'; r.counts.forEach(v=>l+='<td>'+v+'</td>'); l+='</tr>'}); document.getElementById('log').innerHTML=l;"
-"}catch(e){document.getElementById('status').textContent=e.message}}"
+"}catch(e){document.getElementById('status').textContent=e.message}finally{refreshBusy=false}}"
 "async function syncTime(){await api('/api/time?epoch='+Math.floor(Date.now()/1000)); refresh()}"
 "async function autoSyncTime(){let e=Math.floor(Date.now()/1000); if(e>1600000000){try{await api('/api/time?epoch='+e)}catch(err){}} refresh()}"
 "async function setManualTime(){let v=document.getElementById('manualTime').value; if(v) {await api('/api/time?epoch='+Math.floor(new Date(v).getTime()/1000)); refresh()}}"
@@ -54,7 +54,7 @@ static const char s_index_html[] =
 "async function keepWifiOn(){await api('/api/wifi_keep_on?enable=1'); refresh()}"
 "async function allowWifiAutoOff(){await api('/api/wifi_keep_on?enable=0'); refresh()}"
 "async function powerSave(){if(confirm('Turn Wi-Fi off until next reboot? HV will cycle off briefly and counting resumes after settle.')){try{await syncTime()}catch(e){} await api('/api/power_save'); document.body.innerHTML='<main><section><h2>Power saving mode enabled</h2><p>Wi-Fi is shutting down. HV will restart after 3 seconds, then counting resumes after settle.</p></section></main>'}}"
-"autoSyncTime(); loadSdFiles(); setInterval(refresh,2000);</script></body></html>";
+"refresh(); setTimeout(autoSyncTime,500); setInterval(refresh,2000);</script></body></html>";
 
 
 // Extract one query parameter from an HTTP request.
@@ -869,8 +869,8 @@ esp_err_t start_wifi_ap(void)
     snprintf((char *)wifi_config.ap.password, sizeof(wifi_config.ap.password), "%s", WIFI_AP_PASS);
     wifi_config.ap.ssid_len = strlen(WIFI_AP_SSID);
     wifi_config.ap.channel = WIFI_AP_CHANNEL;
-    wifi_config.ap.max_connection = 1;
-    wifi_config.ap.beacon_interval = 1000;
+    wifi_config.ap.max_connection = WIFI_AP_MAX_CONN;
+    wifi_config.ap.beacon_interval = 100;
     wifi_config.ap.authmode = strlen(WIFI_AP_PASS) ? WIFI_AUTH_WPA_WPA2_PSK : WIFI_AUTH_OPEN;
 
     ESP_LOGI(TAG, "Wi-Fi init: AP mode");
@@ -881,7 +881,7 @@ esp_err_t start_wifi_ap(void)
     ESP_RETURN_ON_ERROR(esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20), TAG, "wifi AP bandwidth");
     ESP_LOGI(TAG, "Wi-Fi init: start AP");
     ESP_RETURN_ON_ERROR(esp_wifi_start(), TAG, "wifi start");
-    ESP_LOGI(TAG, "Wi-Fi AP started: SSID=%s password=%s URL=http://192.168.4.1", WIFI_AP_SSID, WIFI_AP_PASS);
+    ESP_LOGW(TAG, "Wi-Fi AP ready: SSID=%s password=%s URL=http://192.168.4.1", WIFI_AP_SSID, WIFI_AP_PASS);
     return ESP_OK;
 }
 
@@ -918,6 +918,6 @@ esp_err_t start_webserver(void)
     for (size_t i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
         ESP_RETURN_ON_ERROR(httpd_register_uri_handler(s_httpd, &handlers[i]), TAG, "register HTTP handler");
     }
-    ESP_LOGI(TAG, "HTTP server ready on http://192.168.4.1");
+    ESP_LOGW(TAG, "HTTP server ready on http://192.168.4.1");
     return ESP_OK;
 }
