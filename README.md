@@ -2,7 +2,7 @@
 
 This repository contains ESP-IDF firmware for running a gLOWCOST/MPPC cosmic-muon detector readout on a Waveshare ESP32-P4 Module DEV KIT. The firmware adapts the Raspberry Pi HAT readout workflow to the ESP32-P4 40-pin header, including FPGA programming, high-voltage control, DAC threshold setup, one-minute count logging, BME280 environment logging, a small Wi-Fi setup interface, and a BLE live display link for an ESP32-S3-GEEK screen.
 
-The active profile is adapted from `tharinduudu/mppcInterface-Oct-2025` for the new layout 3v0 readout.
+The active profile is adapted from `tharinduudu/mppcInterface-Oct-2025` for the new layout 3v0 readout. The current Pi reference snapshot checked during ESP32 sync was commit `9c9868d`.
 
 ## Current Hardware Profile
 
@@ -10,9 +10,10 @@ The active profile is adapted from `tharinduudu/mppcInterface-Oct-2025` for the 
 - Readout board: gLOWCOST/MPPC Raspberry Pi HAT-style detector interface.
 - FPGA: iCE40 programmed from embedded `main/fpga.bin`.
 - Active FPGA bitstream: `top_50MHz_led100_dt200_pi10us.bin` from the Oct-2025 readout repository.
-- High voltage: MAX1932 controlled over SPI, startup byte `0xea`.
+- High voltage: MAX1932 controlled over SPI, startup byte `0xf9`.
 - DAC: DACx578 on I2C address `0x47`.
-- Startup DAC values: channels 0-3 at `0x2f1`; threshold channels 4-7 at `0x070`.
+- Startup DAC values: channels 0-3 at `0x1eb`; threshold channels 4-7 at `0x080`.
+- Bias target: MAX1932 `0xf9` predicts about 54.94 V high side, DAC `0x1eb` predicts about 1.44 V low side, for about 53.5 V effective bias at 20 C.
 - Environment sensor: optional BME280 on I2C `0x76` or `0x77`.
 - Storage: onboard microSD card in SPI mode.
 - Optional quick-look display: Waveshare ESP32-S3-GEEK running `display/s3-geek-ble-display`.
@@ -25,7 +26,7 @@ At boot, the ESP32-P4:
 2. Programs the iCE40 FPGA from `main/fpga.bin`.
 3. Starts the FPGA runtime clock.
 4. Initializes the DACx578 startup values.
-5. Enables HV to `0xea`.
+5. Enables HV to `0xf9`.
 6. Waits 10 seconds before counting, so startup noise is not logged.
 7. Mounts the SD card and creates a fresh data file.
 8. Starts a Wi-Fi access point and web UI for setup, status, downloads, and controls.
@@ -135,11 +136,11 @@ Do not connect or disconnect scintillator/SiPM hardware while HV is enabled. Pow
 | Setting | Current value |
 | --- | --- |
 | FPGA bitstream | `top_50MHz_led100_dt200_pi10us.bin` embedded as `main/fpga.bin` |
-| HV byte | `0xea` |
+| HV byte | `0xf9` |
 | HV settle delay | 10 seconds |
 | DACx578 address | `0x47` |
-| SiPM DAC channels 0-3 | `0x2f1` |
-| Threshold DAC channels 4-7 | `0x070` |
+| SiPM DAC channels 0-3 | `0x1eb` |
+| Threshold DAC channels 4-7 | `0x080` |
 | Count interval | 60 seconds |
 | Environment interval | 5-minute averages |
 | Wi-Fi SSID | `MuonReadout` |
