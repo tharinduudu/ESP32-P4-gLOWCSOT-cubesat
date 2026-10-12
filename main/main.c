@@ -12,10 +12,31 @@ static esp_err_t init_nvs(void)
     return ret;
 }
 
+// The USB-JTAG console can print logs with only the ROM path, but stdin needs
+// the real driver installed before fgets() can receive bench commands.
+static void init_usb_console(void)
+{
+#if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+    usb_serial_jtag_vfs_set_rx_line_endings(ESP_LINE_ENDINGS_CR);
+    usb_serial_jtag_vfs_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
+    fcntl(fileno(stdout), F_SETFL, 0);
+    fcntl(fileno(stdin), F_SETFL, 0);
+
+    usb_serial_jtag_driver_config_t config = USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
+    esp_err_t ret = usb_serial_jtag_driver_install(&config);
+    if (ret == ESP_OK || ret == ESP_ERR_INVALID_STATE) {
+        usb_serial_jtag_vfs_use_driver();
+    } else {
+        ESP_LOGW(TAG, "USB console RX disabled: %s", esp_err_to_name(ret));
+    }
+#endif
+}
+
 // Top-level boot choreography for the detector. This keeps dangerous hardware
 // transitions in one readable order and starts background tasks only afterward.
 void app_main(void)
 {
+    init_usb_console();
     ESP_LOGI(TAG, "gLOWCOST MPPC ESP32-P4 Wi-Fi readout");
     ESP_LOGW(TAG, "startup sequence: HV off, FPGA flash, DAC init, then HV 0x%02x after %d ms settle", STARTUP_HV_BYTE, HV_SETTLE_MS);
 

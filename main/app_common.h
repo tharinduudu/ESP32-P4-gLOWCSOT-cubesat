@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdbool.h>
@@ -20,6 +21,8 @@
 #include "driver/ledc.h"
 #include "driver/sdspi_host.h"
 #include "driver/spi_master.h"
+#include "driver/usb_serial_jtag.h"
+#include "driver/usb_serial_jtag_vfs.h"
 #include "esp_check.h"
 #include "esp_err.h"
 #include "esp_event.h"
@@ -37,6 +40,7 @@
 #include "freertos/task.h"
 #include "nvs_flash.h"
 #include "sdmmc_cmd.h"
+#include "sdkconfig.h"
 
 // Waveshare ESP32-P4-Module-DEV-KIT 40-pin header mapping, matched to the Pi
 // physical pins used by the gLOWCOST MPPC interface schematic.
