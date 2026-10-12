@@ -106,12 +106,11 @@
 #define ICE40_PI_BITSTREAM_LEN  0x1CA6
 #if READOUT_PROFILE_OCT2025
 #define COUNT_CHANNELS          7
-// Bias point requested from the Oct-2025 voltage model:
-// MAX1932 0xF9 gives about 54.94 V high side, and DAC 0x1EB gives about
-// 1.44 V low side, for roughly 53.5 V effective bias at 20 C.
-#define STARTUP_HV_BYTE         0xF9
-#define STARTUP_DAC_CODE        0x1EB
-#define STARTUP_DAC_THRESHOLD_CODE 0x040
+// Bench-tested startup values from the earlier Oct-2025 bring-up. Threshold
+// is set conservatively until waveform analysis gives a better final number.
+#define STARTUP_HV_BYTE         0xEA
+#define STARTUP_DAC_CODE        0x2F1
+#define STARTUP_DAC_THRESHOLD_CODE 0x080
 #define DACX578_ADDR            0x47
 #else
 #define COUNT_CHANNELS          6

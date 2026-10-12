@@ -132,7 +132,7 @@ The main count channels are:
 - `gpio5_p29`: raw CH1-like output
 - `gpio16_p36`: raw CH2-like output
 
-During threshold tuning, very low threshold values caused raw channels to rise into thousands per minute. Threshold `0x070` gave raw channels around the low hundreds per minute in the tested setup. This is a working threshold, but waveform captures still need to be analyzed further before calling the threshold fully optimized.
+During threshold tuning, very low threshold values caused raw channels to rise into thousands per minute. Threshold `0x080` was the quietest quick-test setting, while `0x070` was slightly noisier but still usable. Waveform captures still need to be analyzed further before calling the threshold fully optimized.
 
 ## FPGA Reflash Procedure
 

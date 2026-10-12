@@ -5,7 +5,7 @@ This file records threshold DAC observations from the ESP32-P4 test session.
 The threshold DAC channels are DACx578 channels 4-7. The current firmware startup value is:
 
 ```text
-0x070
+0x080
 ```
 
 ## Test Conditions
@@ -62,7 +62,7 @@ Result: slightly noisier than `0x080`, but still far quieter than `0x040`.
 
 ## Current Choice
 
-`0x070` was left as the active threshold value because it is between the quiet `0x080` setting and the overly sensitive `0x040` setting.
+`0x080` is the active threshold value for the current firmware because it was the quietest bench-tested setting in this quick comparison.
 
 For future tuning, take longer runs at each threshold. One minute is useful for quick checks, but stable detector tuning should compare longer periods under similar temperature and scintillator conditions.
 

@@ -36,7 +36,7 @@ Current DAC setup:
 | DAC channels | Purpose | Startup code |
 | --- | --- | ---: |
 | 0-3 | SiPM low-side/bias control | `0x2f1` |
-| 4-7 | Threshold control | `0x070` |
+| 4-7 | Threshold control | `0x080` |
 
 Channels 0-3 may be adjusted by temperature compensation. Channels 4-7 stay fixed unless changed manually or by firmware constants.
 

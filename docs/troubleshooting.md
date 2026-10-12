@@ -72,7 +72,7 @@ Threshold observations:
 
 - `0x040` was too noisy in the test session.
 - `0x080` was quiet.
-- `0x070` is the current compromise.
+- `0x080` is the current conservative setting.
 
 ## Counts Are Zero
 
