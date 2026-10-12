@@ -118,7 +118,7 @@ Environment files look like:
 env_YYYYMMDD_HHMMSS_label.csv
 ```
 
-If time was not synced before the file was created, the filename starts with `unsynced`.
+If time was not synced before the file was created, the filename starts with `unsynced`. Once browser time sync succeeds, the active muon and environment files are renamed with the reconstructed run-start timestamp.
 
 ## Interpreting A Quick Count Check
 

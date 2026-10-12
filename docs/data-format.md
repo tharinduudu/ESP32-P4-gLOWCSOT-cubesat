@@ -24,6 +24,11 @@ With a run label:
 
 If the filename already exists, a suffix such as `_01` is added.
 
+If the SD card is mounted before browser time is known, the firmware starts
+with an `unsynced` filename and renames the active muon and environment files
+after browser time sync. If time sync happens while the SD card is still
+mounting, the next browser sync retries the rename.
+
 ## Muon CSV Columns
 
 ```csv

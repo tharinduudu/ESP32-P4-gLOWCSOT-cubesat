@@ -270,6 +270,23 @@ static esp_err_t latest_txt_handler(httpd_req_t *req)
     return httpd_resp_sendstr(req, line);
 }
 
+// Check whether either active SD filename still carries the temporary unsynced
+// stem. This lets a later browser sync repair filenames even if an earlier
+// sync happened while the SD card was still mounting.
+static bool active_sd_name_needs_time_sync(void)
+{
+    bool needs_sync = false;
+    if (!s_sd_mutex) {
+        return false;
+    }
+
+    xSemaphoreTake(s_sd_mutex, portMAX_DELAY);
+    needs_sync = strstr(s_log_path, "_unsynced_") != NULL ||
+                 strstr(s_env_log_path, "_unsynced_") != NULL;
+    xSemaphoreGive(s_sd_mutex);
+    return needs_sync;
+}
+
 // Accept browser time from the web page and repair the run start timestamp if
 // the detector booted before time was known.
 static esp_err_t time_handler(httpd_req_t *req)
@@ -290,10 +307,17 @@ static esp_err_t time_handler(httpd_req_t *req)
     portENTER_CRITICAL(&s_state_mux);
     s_time_set = true;
     portEXIT_CRITICAL(&s_state_mux);
-    // If the run started before the phone/browser set time, reconstruct the
-    // likely boot timestamp and rename the active files to match it.
-    if (s_run_start_epoch <= 1600000000 && s_run_start_uptime_ms > 0) {
-        int64_t elapsed_s = ((esp_timer_get_time() / 1000) - s_run_start_uptime_ms) / 1000;
+
+    // If this run started before the phone/browser set time, reconstruct the
+    // likely boot timestamp and rename the active files to match it. If a
+    // previous rename failed because the SD card was still mounting, retry
+    // while the active filename still says "unsynced".
+    if (s_run_start_epoch <= 1600000000 || active_sd_name_needs_time_sync()) {
+        int64_t elapsed_ms = (esp_timer_get_time() / 1000) - s_run_start_uptime_ms;
+        if (elapsed_ms < 0) {
+            elapsed_ms = 0;
+        }
+        int64_t elapsed_s = elapsed_ms / 1000;
         s_run_start_epoch = (time_t)(epoch - elapsed_s);
         esp_err_t ret = sd_refresh_log_path();
         if (ret != ESP_OK) {
