@@ -10,11 +10,15 @@ This repository contains the ESP32-P4 embedded readout used for portable field a
 
 ## Hardware Photos
 
-| Detector powered from USB power bank | Readout stack | Readout board |
-| --- | --- | --- |
-| ![gLOWCOST detector powered from a USB power bank](docs/assets/detector-usb-power-bank.jpg) | ![ESP32-P4 and detector readout stack](docs/assets/detector-readout-stack.jpg) | ![Detector readout board with SiPM connectors](docs/assets/detector-readout-board.jpg) |
-| Side view | Connector view | 5000 mAh power bank |
-| ![Detector side view with cables connected](docs/assets/detector-side-view.jpg) | ![Detector connector side with coax cables](docs/assets/detector-connectors.jpg) | ![USB power bank used for field runs](docs/assets/power-bank.jpg) |
+| Closed case | Open case |
+| --- | --- |
+| ![gLOWCOST detector closed inside its case](docs/assets/detector-closed-case.jpg) | ![gLOWCOST detector opened inside its case](docs/assets/detector-open-case.jpg) |
+| Detector powered from USB power bank | Readout stack |
+| ![gLOWCOST detector powered from a USB power bank](docs/assets/detector-usb-power-bank.jpg) | ![ESP32-P4 and detector readout stack](docs/assets/detector-readout-stack.jpg) |
+| Readout board | Connector view |
+| ![Detector readout board with SiPM connectors](docs/assets/detector-readout-board.jpg) | ![Detector connector side with coax cables](docs/assets/detector-connectors.jpg) |
+| Side view | 5000 mAh power bank |
+| ![Detector side view with cables connected](docs/assets/detector-side-view.jpg) | ![USB power bank used for field runs](docs/assets/power-bank.jpg) |
 
 ## Quick Start: Using The Detector
 
