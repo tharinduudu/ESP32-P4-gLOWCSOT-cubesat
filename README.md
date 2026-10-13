@@ -2,6 +2,12 @@
 
 ESP-IDF firmware for running a gLOWCOST/MPPC cosmic-muon detector readout on a Waveshare ESP32-P4 Module DEV KIT. It adapts the Raspberry Pi HAT readout workflow to the ESP32-P4 40-pin header, including FPGA programming, high-voltage control, DAC threshold setup, one-minute count logging, BME280 environment logging, a Wi-Fi setup page, and an optional ESP32-S3-GEEK BLE live display.
 
+## Introduction
+
+This project is part of the gLOWCOST detector development effort connected to the [Georgia State University global cosmic-ray muon detector network](https://cosmic.gsu.edu/). The GSU project uses low-cost scintillator and SiPM-based muon detectors to build a distributed network for monitoring cosmic-ray count changes related to space weather and atmospheric conditions.
+
+This repository contains the ESP32-P4 embedded readout used for portable field and flight measurements. The firmware starts the detector from a USB power bank, programs the FPGA, sets the high-voltage and DAC operating points, records timestamped count data to a microSD card, and provides a short Wi-Fi setup window for checking status and downloading files. After setup, Wi-Fi can be turned off so the detector can continue a quieter, lower-power flight run.
+
 ## Quick Start: Using The Detector
 
 This is the normal field-use procedure for an already-built detector.
