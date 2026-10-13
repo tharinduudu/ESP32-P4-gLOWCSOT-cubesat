@@ -8,6 +8,14 @@ This project is part of the gLOWCOST detector development effort connected to th
 
 This repository contains the ESP32-P4 embedded readout used for portable field and flight measurements. The firmware starts the detector from a USB power bank, programs the FPGA, sets the high-voltage and DAC operating points, records timestamped count data to a microSD card, and provides a short Wi-Fi setup window for checking status and downloading files. After setup, Wi-Fi can be turned off so the detector can continue a quieter, lower-power flight run.
 
+## Hardware Photos
+
+| Detector powered from USB power bank | Readout stack | Readout board |
+| --- | --- | --- |
+| ![gLOWCOST detector powered from a USB power bank](docs/assets/detector-usb-power-bank.jpg) | ![ESP32-P4 and detector readout stack](docs/assets/detector-readout-stack.jpg) | ![Detector readout board with SiPM connectors](docs/assets/detector-readout-board.jpg) |
+| Side view | Connector view | 5000 mAh power bank |
+| ![Detector side view with cables connected](docs/assets/detector-side-view.jpg) | ![Detector connector side with coax cables](docs/assets/detector-connectors.jpg) | ![USB power bank used for field runs](docs/assets/power-bank.jpg) |
+
 ## Quick Start: Using The Detector
 
 This is the normal field-use procedure for an already-built detector.
@@ -21,12 +29,6 @@ This is the normal field-use procedure for an already-built detector.
 5. A new muon data file and environment file are created on the SD card for each detector start.
 
 At boot the firmware turns HV off first, programs the FPGA, sets the DACs, turns HV on, waits 10 seconds, then starts recording. This avoids logging startup noise as detector data.
-
-Add field-use photos here when ready:
-
-- `docs/assets/power-bank-run.jpg`
-- `docs/assets/detector-in-use.jpg`
-- `docs/assets/sd-card-ready.jpg`
 
 ### 2. Open The Web Page
 
@@ -127,11 +129,6 @@ Do not connect or disconnect scintillator/SiPM hardware while HV is enabled. Pow
 The web page highlights SD-card readiness, live one-minute coincident counts, HV/FPGA/DAC controls, environment readings, current log downloads, and previous SD files.
 
 ![ESP32-P4 muon readout web interface](docs/assets/webserver-screenshot.png)
-
-Add phone/laptop web UI photos here when ready:
-
-- `docs/assets/web-ui-phone.jpg`
-- `docs/assets/live-counts-display.jpg`
 
 The active profile is adapted from `tharinduudu/mppcInterface-Oct-2025` for the new layout 3v0 readout. The current Pi reference snapshot checked during ESP32 sync was commit `9c9868d`.
 
