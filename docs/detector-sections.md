@@ -65,24 +65,27 @@ main/fpga.bin
 Current bitstream source:
 
 ```text
-top_50MHz_led100_dt200_pi10us.bin
+top_50MHz_3layer_ch123_led100_dead200_pi10us.bin
 ```
 
 The firmware programs the FPGA over SPI, checks DONE, then starts the runtime clock.
 
 ## 5. Counter Section
 
-The ESP32-P4 counts rising edges on seven GPIO interrupt inputs.
+The ESP32-P4 counts rising edges on six GPIO interrupt inputs. The active
+three-layer FPGA profile uses physical detector channels CH1, CH2, and CH3.
 
 | Firmware name | Meaning | Pi physical pin |
 | --- | --- | ---: |
-| `ch01_p13` | CH0 and CH1 coincidence | 13 |
-| `ch02_p12` | CH0 and CH2 coincidence | 12 |
-| `ch12_p11` | CH1 and CH2 coincidence | 11 |
-| `ch012_p22` | CH0 and CH1 and CH2 coincidence | 22 |
-| `gpio6_p31` | raw channel output | 31 |
-| `gpio5_p29` | raw channel output | 29 |
-| `gpio16_p36` | raw channel output | 36 |
+| `ch12_p13` | CH1 and CH2 coincidence | 13 |
+| `ch13_p12` | CH1 and CH3 coincidence | 12 |
+| `ch23_p11` | CH2 and CH3 coincidence | 11 |
+| `ch1_p31` | CH1 single count | 31 |
+| `ch2_p29` | CH2 single count | 29 |
+| `ch3_p36` | CH3 single count | 36 |
+
+BCM25 / Pi physical pin 22 carries the spare CH0 single output in this FPGA
+build and is deliberately excluded from detector logging.
 
 Counting is accumulated into one-minute records.
 
@@ -129,6 +132,8 @@ URL: http://192.168.4.1
 
 The web UI is for setup and quick checks. It is not required for counting after setup.
 
+The board's CH343 USB-UART path provides a wired monitoring option. Firmware on GPIO37/GPIO38 exposes status, controls, and SD file transfer to `tools/uart_web_monitor.py`, which serves a local page on the attached Mac at `http://127.0.0.1:8080`. This path remains available with Wi-Fi off and does not reset count intervals when the Mac disconnects.
+
 The web server can:
 
 - show SD card status
@@ -151,7 +156,7 @@ This gives a quick `tail -f` style view without keeping the Wi-Fi access point a
 | --- | --- |
 | sequence | shows the packet is updating |
 | epoch | P4 time for the current snapshot |
-| seven counters | coincidence and raw live counts |
+| six counters | three pair coincidences and three single-channel counts |
 | status byte | time, counting, FPGA, SD, and BME flags |
 | HV byte | current MAX1932 setting |
 
@@ -168,9 +173,10 @@ sequenceDiagram
     participant HV as MAX1932 HV
     participant WiFi
     participant SD
-    User->>ESP: Turn Wi-Fi off or no client timeout
+    User->>ESP: Turn Wi-Fi off or let setup timer expire
     ESP->>HV: HV off
-    ESP->>WiFi: Stop HTTP and Wi-Fi
+    ESP->>WiFi: Stop Wi-Fi radio
+    Note over ESP: UART monitor remains available
     ESP->>HV: Wait 3 seconds
     ESP->>HV: Restore HV byte
     ESP->>ESP: Wait 10 second settle

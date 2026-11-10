@@ -43,10 +43,10 @@
 #define COLOR_RED               0xf800
 #define COLOR_DIM               0x7bef
 
-#define COUNT_CHANNELS          7
+#define COUNT_CHANNELS          6
 #define BLE_COMPANY_ID          0xFFFF
-#define BLE_PAYLOAD_VERSION     1
-#define BLE_PAYLOAD_LEN         26
+#define BLE_PAYLOAD_VERSION     2
+#define BLE_PAYLOAD_LEN         24
 #define DISPLAY_REFRESH_MS      1000
 #define STALE_PACKET_MS         10000
 #define BLE_SCAN_INTERVAL_MS    1000
@@ -447,16 +447,13 @@ static void render_packet(const ble_count_packet_t *packet)
     snprintf(row, sizeof(row), "RSSI %d", packet->rssi);
     fb_text(168, 2, row, 1, COLOR_DIM);
 
-    snprintf(row, sizeof(row), "01 %5u", packet->counts[0]);
+    snprintf(row, sizeof(row), "12 %5u", packet->counts[0]);
     fb_text(4, 20, row, 2, COLOR_YELLOW);
-    snprintf(row, sizeof(row), "02 %5u", packet->counts[1]);
+    snprintf(row, sizeof(row), "13 %5u", packet->counts[1]);
     fb_text(124, 20, row, 2, COLOR_YELLOW);
-    snprintf(row, sizeof(row), "12 %5u", packet->counts[2]);
+    snprintf(row, sizeof(row), "23 %5u", packet->counts[2]);
     fb_text(4, 48, row, 2, COLOR_WHITE);
-    snprintf(row, sizeof(row), "012%5u", packet->counts[3]);
-    fb_text(124, 48, row, 2, COLOR_WHITE);
-
-    snprintf(row, sizeof(row), "G6 %u  G5 %u  G16 %u", packet->counts[4], packet->counts[5], packet->counts[6]);
+    snprintf(row, sizeof(row), "CH1 %u  CH2 %u  CH3 %u", packet->counts[3], packet->counts[4], packet->counts[5]);
     fb_text(4, 78, row, 1, COLOR_DIM);
     snprintf(row, sizeof(row), "HV %02X  %s  %s", packet->hv, counting ? "COUNT" : "WAIT", sd_ready ? "SD OK" : "NO SD");
     fb_text(4, 94, row, 1, counting && sd_ready ? COLOR_GREEN : COLOR_YELLOW);

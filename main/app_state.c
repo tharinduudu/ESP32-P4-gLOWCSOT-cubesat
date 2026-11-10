@@ -34,6 +34,7 @@ int32_t s_browser_tz_offset_min;
 bool s_sd_mounted;
 bool s_power_save_mode;
 bool s_wifi_keep_on;
+int64_t s_wifi_auto_off_deadline_ms;
 bool s_fpga_clock_on;
 bool s_fpga_clock_is_clkout;
 esp_clock_output_mapping_handle_t s_fpga_clkout;
@@ -56,25 +57,19 @@ bool s_i2c_ready;
 // Channel order is the on-disk and web/API order. Change it carefully because
 // old CSV files and analysis scripts will assume these names.
 const gpio_num_t s_count_pins[COUNT_CHANNELS] = {
-    PIN_COUNT_CH01,
-    PIN_COUNT_CH02,
     PIN_COUNT_CH12,
-#if READOUT_PROFILE_OCT2025
-    PIN_COUNT_CH012,
-#endif
-    PIN_COUNT_GPIO6,
-    PIN_COUNT_GPIO5,
-    PIN_COUNT_GPIO16,
+    PIN_COUNT_CH13,
+    PIN_COUNT_CH23,
+    PIN_COUNT_CH1,
+    PIN_COUNT_CH2,
+    PIN_COUNT_CH3,
 };
 
 const char *s_count_names[COUNT_CHANNELS] = {
-    "ch01_p13",
-    "ch02_p12",
-    "ch12_p11",
-#if READOUT_PROFILE_OCT2025
-    "ch012_p22",
-#endif
-    "gpio6_p31",
-    "gpio5_p29",
-    "gpio16_p36",
+    "ch12_p13",
+    "ch13_p12",
+    "ch23_p11",
+    "ch1_p31",
+    "ch2_p29",
+    "ch3_p36",
 };

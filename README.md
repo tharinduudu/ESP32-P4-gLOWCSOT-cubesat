@@ -1,12 +1,12 @@
 # ESP32-P4 gLOWCOST CubeSat Muon Readout
 
-ESP-IDF firmware for running a gLOWCOST/MPPC cosmic-muon detector readout on a Waveshare ESP32-P4 Module DEV KIT. It adapts the Raspberry Pi HAT readout workflow to the ESP32-P4 40-pin header, including FPGA programming, high-voltage control, DAC threshold setup, one-minute count logging, BME280 environment logging, a Wi-Fi setup page, and an optional ESP32-S3-GEEK BLE live display.
+ESP-IDF firmware for running a gLOWCOST/MPPC cosmic-muon detector readout on a Waveshare ESP32-P4 Module DEV KIT. It adapts the Raspberry Pi HAT readout workflow to the ESP32-P4 40-pin header, including FPGA programming, high-voltage control, DAC threshold setup, one-minute count logging, BME280 environment logging, Wi-Fi and USB-UART monitoring, and an optional ESP32-S3-GEEK BLE live display.
 
 ## Introduction
 
 This project is part of the gLOWCOST detector development effort connected to the [Georgia State University global cosmic-ray muon detector network](https://cosmic.gsu.edu/). The GSU project uses low-cost scintillator and SiPM-based muon detectors to build a distributed network for monitoring cosmic-ray count changes related to space weather and atmospheric conditions.
 
-This repository contains the ESP32-P4 embedded readout used for portable field and flight measurements. The firmware starts the detector from a USB power bank, programs the FPGA, sets the high-voltage and DAC operating points, records timestamped count data to a microSD card, and provides a short Wi-Fi setup window for checking status and downloading files. After setup, Wi-Fi can be turned off so the detector can continue a quieter, lower-power flight run.
+This repository contains the ESP32-P4 embedded readout used for portable field and flight measurements. The firmware starts the detector from a USB power bank, programs the FPGA, sets the high-voltage and DAC operating points, and records timestamped count data to a microSD card. The detector can be checked over Wi-Fi or through a Mac connected to the board's USB-UART port. After setup, Wi-Fi can be turned off so the detector can continue a quieter flight run.
 
 ## Hardware Photos
 
@@ -46,6 +46,14 @@ After power-up, connect your phone or computer to:
 
 The browser automatically syncs time to the detector. The first browser sync in each boot renames the active SD files using the browser's local clock time.
 
+For a wired flight monitor without Wi-Fi, keep the detector powered from its normal USB-C power input and connect the other, USB-UART, Type-C port to a Mac. Run:
+
+```sh
+python3 tools/uart_web_monitor.py
+```
+
+Then open `http://127.0.0.1:8080`. This local page provides live counts, status, time sync, run labels, controls, and SD file downloads through UART. Unplugging the Mac does not reset the minute counters or stop SD logging; the power bank continues to run the detector.
+
 ### 3. Check The Run
 
 1. Confirm the web page shows **SD Card Ready**.
@@ -60,20 +68,20 @@ Wi-Fi can add noise, so use it only for setup and quick checks.
 
 1. After the SD card, time, label, and counts look good, press **Turn Wi-Fi Off** or let Wi-Fi auto-off.
 2. The firmware briefly turns HV off during Wi-Fi shutdown, then turns HV back on and waits for the normal settle delay.
-3. The detector keeps counting and logging to the SD card while Wi-Fi is off.
+3. The detector keeps counting and logging to the SD card while Wi-Fi is off. The local USB-UART page remains available on a connected Mac.
 4. Leave the power bank connected for the full run.
 
-To access the web page again after Wi-Fi has been turned off, power-cycle the detector. A new run file will be created on the next start.
+Use the USB-UART monitor while Wi-Fi is off, or power-cycle the detector to restore the Wi-Fi setup page. A new run file will be created on the next start.
 
 ### 5. Download Data
 
-For web downloads, connect to `MuonReadout` while Wi-Fi is active and use:
+For web downloads, connect to `MuonReadout` while Wi-Fi is active or open the local USB-UART page on the Mac, then use:
 
 - **Download Current File** for the active muon count file
 - **Download Environment File** for the active BME280 file
 - **Previous SD Files** for older `.csv` and `.log` files, newest first
 
-For a USB serial quick check from a Mac:
+For the separate native USB maintenance console:
 
 ```sh
 python3 -m serial.tools.miniterm /dev/cu.usbmodem1101 115200
@@ -92,6 +100,8 @@ sd list
 ## Updating Firmware
 
 Normal detector use does not require reflashing. Use this only when installing a new firmware version.
+
+Before flashing, fully power the detector off and let the HV discharge. For the safest download-mode entry, disconnect the power bank and Mac, hold **BOOT**, connect only the USB-UART cable to the Mac, then release **BOOT** after the port appears. This prevents the old application from starting and enabling HV before the flash.
 
 ```sh
 idf.py set-target esp32p4
@@ -115,7 +125,7 @@ Do not connect or disconnect scintillator/SiPM hardware while HV is enabled. Pow
 
 | Setting | Current value |
 | --- | --- |
-| FPGA bitstream | `top_50MHz_led100_dt200_pi10us.bin` embedded as `main/fpga.bin` |
+| FPGA bitstream | `top_50MHz_3layer_ch123_led100_dead200_pi10us.bin` embedded as `main/fpga.bin` |
 | HV byte | `0xea` |
 | HV settle delay | 10 seconds |
 | DACx578 address | `0x47` |
@@ -125,7 +135,8 @@ Do not connect or disconnect scintillator/SiPM hardware while HV is enabled. Pow
 | Environment interval | 5-minute averages |
 | Wi-Fi SSID | `MuonReadout` |
 | Wi-Fi password | `glowcost` |
-| Wi-Fi auto-off | 7 seconds if no client is connected |
+| Wi-Fi auto-off | 5 minutes after startup, unless **Keep Wi-Fi On** is selected |
+| USB-UART monitor | 115200 baud on GPIO37/GPIO38; local dashboard at `http://127.0.0.1:8080` |
 | BLE display name | `MuonP4` |
 
 ## Web Interface
@@ -141,7 +152,8 @@ The active profile is adapted from `tharinduudu/mppcInterface-Oct-2025` for the 
 - Controller: Waveshare ESP32-P4 Module DEV KIT, tested on ESP32-P4 rev v1.3.
 - Readout board: gLOWCOST/MPPC Raspberry Pi HAT-style detector interface.
 - FPGA: iCE40 programmed from embedded `main/fpga.bin`.
-- Active FPGA bitstream: `top_50MHz_led100_dt200_pi10us.bin` from the Oct-2025 readout repository.
+- Active FPGA bitstream: `top_50MHz_3layer_ch123_led100_dead200_pi10us.bin`, using physical detector channels CH1/CH2/CH3.
+- Logged counter order: CH1-CH2, CH1-CH3, CH2-CH3, CH1, CH2, CH3. The spare CH0 output on BCM25 is not logged.
 - High voltage: MAX1932 controlled over SPI, startup byte `0xea`.
 - DAC: DACx578 on I2C address `0x47`.
 - Startup DAC values: channels 0-3 at `0x2f1`; threshold channels 4-7 at `0x080`.
@@ -161,9 +173,10 @@ At boot, the ESP32-P4:
 5. Enables HV to `0xea`.
 6. Waits 10 seconds before counting, so startup noise is not logged.
 7. Mounts the SD card and creates a fresh data file.
-8. Starts a Wi-Fi access point and web UI for setup, status, downloads, and controls.
-9. Starts BLE live-count advertisements for the S3 screen display.
-10. Automatically turns Wi-Fi off after the setup window when no client is connected, while SD logging, counting, and BLE live display continue.
+8. Starts a Wi-Fi access point for setup, status, downloads, and controls.
+9. Starts the independent USB-UART flight-monitor protocol.
+10. Starts BLE live-count advertisements for the S3 screen display.
+11. Automatically turns Wi-Fi off after the five-minute setup window unless **Keep Wi-Fi On** was selected, while UART monitoring, SD logging, counting, and BLE live display continue.
 
 ## Optional S3-GEEK Display
 

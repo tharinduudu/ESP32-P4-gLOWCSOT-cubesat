@@ -73,6 +73,7 @@ void app_main(void)
 
     xTaskCreatePinnedToCore(counter_task, "counter_task", 4096, NULL, 8, NULL, 0);
     xTaskCreatePinnedToCore(bme280_startup_task, "bme_startup_task", 4096, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(uart_monitor_task, "uart_monitor_task", 8192, NULL, 4, NULL, 1);
 
     // BLE starts after the hosted Wi-Fi path is alive and the detector hardware
     // is configured, so the quick display sees meaningful status bits.

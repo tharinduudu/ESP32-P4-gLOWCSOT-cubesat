@@ -2,6 +2,8 @@ build/
 managed_components/
 .cache/
 .DS_Store
+__pycache__/
+*.pyc
 sdkconfig.old
 display/*/sdkconfig
 *.elf
@@ -9,3 +11,4 @@ display/*/sdkconfig
 *.map
 *.log
 *.tmp
+dist/Muon-UART-Monitor-macOS/

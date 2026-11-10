@@ -21,6 +21,7 @@
 #include "driver/ledc.h"
 #include "driver/sdspi_host.h"
 #include "driver/spi_master.h"
+#include "driver/uart.h"
 #include "driver/usb_serial_jtag.h"
 #include "driver/usb_serial_jtag_vfs.h"
 #include "esp_check.h"
@@ -47,9 +48,9 @@
 #define PIN_I2C_SDA             GPIO_NUM_7   // Pi physical 3
 #define PIN_I2C_SCL             GPIO_NUM_8   // Pi physical 5
 #define PIN_FPGA_CLK            GPIO_NUM_23  // Pi physical 7 / BCM4_GPCLK0
-#define PIN_COUNT_CH12          GPIO_NUM_21  // Pi physical 11 / BCM17
-#define PIN_COUNT_CH02          GPIO_NUM_22  // Pi physical 12 / BCM18
-#define PIN_COUNT_CH01          GPIO_NUM_20  // Pi physical 13 / BCM27
+#define PIN_COUNT_CH23          GPIO_NUM_21  // Pi physical 11 / BCM17
+#define PIN_COUNT_CH13          GPIO_NUM_22  // Pi physical 12 / BCM18
+#define PIN_COUNT_CH12          GPIO_NUM_20  // Pi physical 13 / BCM27
 #define PIN_FPGA_RST            GPIO_NUM_6   // Pi physical 15 / BCM22
 #define PIN_FPGA_DONE           GPIO_NUM_5   // Pi physical 16 / BCM23
 #define PIN_SPI_MOSI            GPIO_NUM_3   // Pi physical 19 / BCM10_MOSI
@@ -57,11 +58,11 @@
 #define PIN_SPI_SCLK            GPIO_NUM_0   // Pi physical 23 / BCM11_SCLK
 #define PIN_CS_FPGA             GPIO_NUM_4   // Pi physical 18 / BCM24
 #define PIN_CS_DAC              GPIO_NUM_1   // Pi physical 22 / BCM25
-#define PIN_COUNT_CH012         GPIO_NUM_1   // Pi physical 22 / BCM25, Oct-2025 triple coincidence
-#define PIN_COUNT_GPIO5         GPIO_NUM_33  // Pi physical 29 / BCM5
-#define PIN_COUNT_GPIO6         GPIO_NUM_26  // Pi physical 31 / BCM6
+#define PIN_COUNT_CH0_SPARE     GPIO_NUM_1   // Pi physical 22 / BCM25, not logged in the CH1/2/3 profile
+#define PIN_COUNT_CH2           GPIO_NUM_33  // Pi physical 29 / BCM5
+#define PIN_COUNT_CH1           GPIO_NUM_26  // Pi physical 31 / BCM6
 #define PIN_CS_HV               GPIO_NUM_48  // Pi physical 33 / BCM13_PWM1
-#define PIN_COUNT_GPIO16        GPIO_NUM_46  // Pi physical 36 / BCM16
+#define PIN_COUNT_CH3           GPIO_NUM_46  // Pi physical 36 / BCM16
 #define PIN_SD_SPI_MISO         GPIO_NUM_39  // Onboard microSD D0
 #define PIN_SD_SPI_D1           GPIO_NUM_40  // Onboard microSD D1, unused in SPI mode
 #define PIN_SD_SPI_D2           GPIO_NUM_41  // Onboard microSD D2, unused in SPI mode
@@ -105,7 +106,7 @@
 #define TEMP_COMP_MIN_SAMPLES   24
 #define ICE40_PI_BITSTREAM_LEN  0x1CA6
 #if READOUT_PROFILE_OCT2025
-#define COUNT_CHANNELS          7
+#define COUNT_CHANNELS          6
 // Bench-tested startup values from the earlier Oct-2025 bring-up. Threshold
 // is set conservatively until waveform analysis gives a better final number.
 #define STARTUP_HV_BYTE         0xEA
@@ -136,12 +137,16 @@
 #define WIFI_AP_PASS            "glowcost"
 #define WIFI_AP_CHANNEL         6
 #define WIFI_AP_MAX_CONN        4
-#define WIFI_AUTO_OFF_MS        (30 * 1000)
+#define WIFI_AUTO_OFF_MS        (5 * 60 * 1000)
+#define UART_MONITOR_PORT       UART_NUM_0
+#define UART_MONITOR_TX_PIN     GPIO_NUM_37
+#define UART_MONITOR_RX_PIN     GPIO_NUM_38
+#define UART_MONITOR_BAUD       115200
 #define FIELD_MIN_CPU_FREQ_MHZ  40
 #define BLE_ADV_INTERVAL_MS     1000
 #define BLE_PAYLOAD_UPDATE_MS   3000
 #define BLE_COMPANY_ID          0xFFFF
-#define BLE_PAYLOAD_VERSION     1
+#define BLE_PAYLOAD_VERSION     2
 #define BLE_DEVICE_NAME         "MuonP4"
 
 extern const uint8_t fpga_bin_start[] asm("_binary_fpga_bin_start");
@@ -219,6 +224,7 @@ extern int32_t s_browser_tz_offset_min;
 extern bool s_sd_mounted;
 extern bool s_power_save_mode;
 extern bool s_wifi_keep_on;
+extern int64_t s_wifi_auto_off_deadline_ms;
 extern bool s_fpga_clock_on;
 extern bool s_fpga_clock_is_clkout;
 extern esp_clock_output_mapping_handle_t s_fpga_clkout;
@@ -253,6 +259,7 @@ void snapshot_counts(uint32_t out[COUNT_CHANNELS], bool reset);
 void print_and_reset_counts(void);
 void counter_task(void *arg);
 void console_task(void *arg);
+void uart_monitor_task(void *arg);
 void sanitize_run_label(const char *input, char *output, size_t output_len);
 void url_decode_in_place(char *s);
 void csv_time_string(time_t epoch, char *out, size_t out_len);
@@ -270,3 +277,8 @@ esp_err_t init_ble_broadcast(void);
 esp_err_t start_wifi_ap(void);
 esp_err_t start_webserver(void);
 void auto_power_save_task(void *arg);
+size_t format_status_json(char *buf, size_t buf_len);
+esp_err_t apply_browser_time(time_t epoch, bool have_tz_offset, int32_t tz_offset_min);
+esp_err_t update_run_label(const char *label);
+esp_err_t safe_reflash_fpga(void);
+esp_err_t enter_power_save_mode(void);

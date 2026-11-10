@@ -32,20 +32,19 @@ card is still mounting, the next browser sync retries the rename.
 ## Muon CSV Columns
 
 ```csv
-epoch,iso,ch01_p13,ch02_p12,ch12_p11,ch012_p22,gpio6_p31,gpio5_p29,gpio16_p36
+epoch,iso,ch12_p13,ch13_p12,ch23_p11,ch1_p31,ch2_p29,ch3_p36
 ```
 
 | Column | Meaning |
 | --- | --- |
 | `epoch` | Unix time in seconds since 1970-01-01 UTC |
 | `iso` | browser-local readable timestamp after time sync, or `unset` before sync |
-| `ch01_p13` | CH0 and CH1 coincidence |
-| `ch02_p12` | CH0 and CH2 coincidence |
-| `ch12_p11` | CH1 and CH2 coincidence |
-| `ch012_p22` | triple coincidence |
-| `gpio6_p31` | raw channel output |
-| `gpio5_p29` | raw channel output |
-| `gpio16_p36` | raw channel output |
+| `ch12_p13` | CH1 and CH2 coincidence |
+| `ch13_p12` | CH1 and CH3 coincidence |
+| `ch23_p11` | CH2 and CH3 coincidence |
+| `ch1_p31` | CH1 single count |
+| `ch2_p29` | CH2 single count |
+| `ch3_p36` | CH3 single count |
 
 One row is written every 60 seconds while counting is enabled.
 

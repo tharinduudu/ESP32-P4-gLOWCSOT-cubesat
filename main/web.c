@@ -1,5 +1,7 @@
 #include "app_common.h"
 
+#define STATUS_RECORDS 10
+
 static const char s_index_html[] =
 // One self-contained page keeps the AP useful even with no internet connection
 // and no filesystem dependency beyond the SD data logs.
@@ -13,8 +15,8 @@ static const char s_index_html[] =
 "button,input{font:inherit;border:1px solid #aaa;border-radius:6px;padding:8px;background:white}button{cursor:pointer;background:#1f6feb;color:white;border-color:#1f6feb}"
 "button.secondary{background:white;color:#182026}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}"
 ".topStatus{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:12px}.badge{border:1px solid #d9d5ca;border-radius:8px;padding:12px;background:white}.badgeLabel{font-size:12px;color:#5f675a}.badgeValue{font-size:24px;font-weight:750;margin-top:4px}.badge.okBg{border-color:#8ac7a2;background:#f3fff7}.badge.badBg{border-color:#e39b95;background:#fff5f3}"
-".ok{color:#18794e}.bad{color:#c0342b}.hero{border-color:#aabf98;background:#fbfff7}.countCards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.countCard{border:1px solid #cddfc0;border-radius:8px;padding:12px;background:white}.countName{font-size:13px;color:#5b6754}.countValue{font-size:36px;font-weight:750;line-height:1.1;margin:6px 0}.countMeta{font-size:12px;color:#5f675a}.filesSection{margin-top:18px}@media(max-width:540px){.bar{display:block}.grid{grid-template-columns:1fr}.countValue{font-size:30px}}"
-"</style></head><body><div class=\"bar\"><h1>gLOWCOST Muon Readout</h1><div class=\"mono\" id=\"clock\">--</div></div><main><div class=\"topStatus\"><div id=\"sdBadge\" class=\"badge\"><div class=\"badgeLabel\">SD Card</div><div class=\"badgeValue\">--</div><div class=\"mono\" id=\"sdBadgeFile\">--</div></div></div>"
+".ok{color:#18794e}.bad{color:#c0342b}.hero{border-color:#aabf98;background:#fbfff7}.latestTime{font-size:13px;color:#5f675a;margin-bottom:8px}.latestLine{font:750 24px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}.latestLabel,.latestSep{color:#7b858f;font-weight:600}.latestValue{color:#182026;font-weight:800}.tableScroll{overflow-x:auto}.newestRow{font-weight:750;background:#f2faf5}.filesSection{margin-top:18px}@media(max-width:540px){.bar{display:block}.grid{grid-template-columns:1fr}.latestLine{font-size:18px}}"
+"</style></head><body><div class=\"bar\"><h1>gLOWCOST Muon Readout</h1><div class=\"mono\" id=\"clock\">--</div></div><main><div class=\"topStatus\"><div id=\"sdBadge\" class=\"badge\"><div class=\"badgeLabel\">SD Card</div><div class=\"badgeValue\">--</div><div class=\"mono\" id=\"sdBadgeFile\">--</div></div><div id=\"wifiBadge\" class=\"badge\"><div class=\"badgeLabel\">Wi-Fi</div><div class=\"badgeValue\" id=\"wifiBadgeValue\">--</div><div class=\"mono\" id=\"wifiBadgeDetail\">automatic shutdown</div></div></div>"
 "<div class=\"grid\"><section><h2>Status</h2><div id=\"status\">Loading...</div></section>"
 "<section><h2>Time</h2><div class=\"row\"><button onclick=\"syncTime()\">Sync Browser Time</button></div>"
 "<div class=\"row\"><input id=\"manualTime\" type=\"datetime-local\"><button class=\"secondary\" onclick=\"setManualTime()\">Set</button></div></section>"
@@ -24,22 +26,23 @@ static const char s_index_html[] =
 "<section><h2>FPGA / DAC</h2><div class=\"row\"><button onclick=\"flashFpga()\">HV Off + Flash FPGA + HV On</button><button class=\"secondary\" onclick=\"dacZero()\">Set Startup DAC</button></div>"
 "<div class=\"row\"><input id=\"dacCh\" type=\"number\" min=\"0\" max=\"7\" value=\"0\"><input id=\"dacVal\" class=\"mono\" value=\"0000\" maxlength=\"4\" size=\"6\"><button class=\"secondary\" onclick=\"setDac()\">Set DAC</button></div></section></div>"
 "<section><h2>Power</h2><p>For quiet data, sync/download/check briefly, then turn Wi-Fi off. HV cycles off during Wi-Fi shutdown, then counting resumes after settle.</p><div class=\"row\"><button onclick=\"keepWifiOn()\">Keep Wi-Fi On</button><button class=\"secondary\" onclick=\"allowWifiAutoOff()\">Allow Auto-Off</button><button onclick=\"powerSave()\">Turn Wi-Fi Off</button></div></section>"
-"<section class=\"hero\"><h2>Live Minute Coincident Counts</h2><div id=\"countCards\" class=\"countCards\"></div></section>"
-"<section><h2>Counts Detail</h2><table id=\"counts\"></table></section>"
-"<section><h2>Minute Log</h2><div class=\"row\"><a href=\"/api/log.csv\">Download CSV</a></div><table id=\"log\"></table></section>"
+"<section class=\"hero\"><h2>Latest Recorded Minute</h2><div id=\"latestTime\" class=\"latestTime\">Waiting for the first completed minute...</div><div id=\"latestLine\" class=\"latestLine\"></div></section>"
+"<section><h2>Last 10 Recorded Minutes</h2><div class=\"row\"><a href=\"/api/log.csv\">Download CSV</a></div><div class=\"tableScroll\"><table><thead id=\"historyHead\"></thead><tbody id=\"history\"></tbody></table></div></section>"
 "<section class=\"filesSection\"><h2>Previous SD Files</h2><div class=\"row\"><button class=\"secondary\" onclick=\"loadSdFiles()\">Refresh Files</button></div><div id=\"sdFiles\" class=\"mono\">--</div></section>"
 "</main><script>"
 "async function api(u){let r=await fetch(u); if(!r.ok) throw new Error(await r.text()); return r}"
 "function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}"
 "function fmtEpoch(e){return e>1600000000?new Date(e*1000).toLocaleString():'not set'}"
+"function shortChannel(n){return ({ch12_p13:'1-2',ch13_p12:'1-3',ch23_p11:'2-3',ch1_p31:'ch1',ch2_p29:'ch2',ch3_p36:'ch3'})[n]||n}"
+"function renderRecords(j){let records=(j.records||[]).slice(0,10),channels=j.channels||[]; document.getElementById('historyHead').innerHTML='<tr><th>time</th>'+channels.map(c=>'<th>'+esc(shortChannel(c.name))+'</th>').join('')+'</tr>'; if(!records.length){document.getElementById('latestTime').textContent='Waiting for the first completed minute...'; document.getElementById('latestLine').textContent=''; document.getElementById('history').innerHTML='<tr><td colspan=\"'+(channels.length+1)+'\">No completed minute records yet</td></tr>'; return} let latest=records[0]; document.getElementById('latestTime').textContent=fmtEpoch(latest.epoch); document.getElementById('latestLine').innerHTML=latest.counts.map((v,i)=>'<span class=\"latestLabel\">'+esc(shortChannel(channels[i]?channels[i].name:String(i)))+':</span> <span class=\"latestValue\">'+esc(v)+'</span>').join('<span class=\"latestSep\"> | </span>'); let chronological=records.slice().reverse(); document.getElementById('history').innerHTML=chronological.map((r,i)=>'<tr class=\"'+(i===chronological.length-1?'newestRow':'')+'\"><td>'+fmtEpoch(r.epoch)+'</td>'+r.counts.map(v=>'<td>'+v+'</td>').join('')+'</tr>').join('')}"
+"function fmtCountdown(ms){let s=Math.max(0,Math.ceil(ms/1000)),m=Math.floor(s/60);return String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}"
+"let wifiRemainingMs=0,wifiRemainingAt=Date.now(),wifiKeepOn=false; function renderWifiCountdown(){let badge=document.getElementById('wifiBadge'); if(!badge)return; let remaining=wifiKeepOn?0:Math.max(0,wifiRemainingMs-(Date.now()-wifiRemainingAt)); badge.className='badge '+(wifiKeepOn?'okBg':''); document.getElementById('wifiBadgeValue').textContent=wifiKeepOn?'Stays On':('Off in '+fmtCountdown(remaining)); document.getElementById('wifiBadgeDetail').textContent=wifiKeepOn?'automatic shutdown disabled':'unless Keep Wi-Fi On is selected'}"
 "let refreshBusy=false; async function refresh(){if(refreshBusy)return; refreshBusy=true; try{let j=await (await api('/api/status')).json(); document.getElementById('clock').textContent=fmtEpoch(j.epoch)+' / '+Math.round(j.uptime_ms/1000)+'s';"
-"let sdBadge=document.getElementById('sdBadge'); sdBadge.className='badge '+(j.sd_mounted?'okBg':'badBg'); sdBadge.querySelector('.badgeValue').innerHTML=j.sd_mounted?'<span class=\"ok\">Ready</span>':'<span class=\"bad\">Not Ready</span>'; document.getElementById('sdBadgeFile').textContent=j.sd_mounted?(j.log_file||'mounted, no file'):'check card / slot';"
+"let sdBadge=document.getElementById('sdBadge'); sdBadge.className='badge '+(j.sd_mounted?'okBg':'badBg'); sdBadge.querySelector('.badgeValue').innerHTML=j.sd_mounted?'<span class=\"ok\">Ready</span>':'<span class=\"bad\">Not Ready</span>'; document.getElementById('sdBadgeFile').textContent=j.sd_mounted?(j.log_file||'mounted, no file'):'check card / slot'; wifiKeepOn=j.wifi_keep_on; wifiRemainingMs=j.wifi_auto_off_remaining_ms; wifiRemainingAt=Date.now(); renderWifiCountdown();"
 "document.getElementById('status').innerHTML='<p>AP <span class=\"mono\">'+j.ssid+'</span> at <span class=\"mono\">http://192.168.4.1</span></p><p>Power saving: '+(j.power_save_mode?'on':'off')+'</p><p>Wi-Fi auto-off: '+(j.wifi_keep_on?'disabled':'enabled')+'</p><p>FPGA DONE: <b class=\"'+(j.fpga_done?'ok':'bad')+'\">'+j.fpga_done+'</b></p><p>HV byte: <span class=\"mono\">0x'+j.hv_byte+'</span></p><p>Counting: '+(j.counting_enabled?'enabled':'settling/off')+'</p><p>HV settle remaining: '+Math.max(0,Math.ceil(j.hv_settle_remaining_ms/1000))+'s</p><p>Time: '+(j.time_set?'set':'not set')+'</p>';"
 "document.getElementById('sdlog').innerHTML='<p>SD: '+(j.sd_mounted?'mounted':'not mounted')+'</p><p>File: <span class=\"mono\">'+esc(j.log_file||'none')+'</span></p><p>Label: <span class=\"mono\">'+esc(j.run_label||'')+'</span></p>';"
 "document.getElementById('envlog').innerHTML='<p>BME280: '+(j.bme280_ok?'ready':'not found')+'</p><p>File: <span class=\"mono\">'+esc(j.env_log_file||'none')+'</span></p>'+((j.env_latest&&j.env_latest.valid)?'<p>Latest: '+j.env_latest.temp_c.toFixed(2)+' C, '+j.env_latest.pressure_hpa.toFixed(2)+' hPa, '+j.env_latest.humidity_pct.toFixed(2)+' %RH</p>':'<p>Latest: waiting</p>');"
-"let cards=''; j.channels.forEach(c=>cards+='<div class=\"countCard\"><div class=\"countName\">'+esc(c.name)+'</div><div class=\"countValue\">'+c.last+'</div><div class=\"countMeta\">current '+c.current+' / total '+c.total+'</div></div>'); document.getElementById('countCards').innerHTML=cards;"
-"let h='<tr><th>channel</th><th>current</th><th>last minute</th><th>total</th></tr>'; j.channels.forEach(c=>h+='<tr><td>'+esc(c.name)+'</td><td>'+c.current+'</td><td>'+c.last+'</td><td>'+c.total+'</td></tr>'); document.getElementById('counts').innerHTML=h;"
-"let l='<tr><th>time</th>'; j.channels.forEach(c=>l+='<th>'+esc(c.name)+'</th>'); l+='</tr>'; j.records.forEach(r=>{l+='<tr><td>'+fmtEpoch(r.epoch)+'</td>'; r.counts.forEach(v=>l+='<td>'+v+'</td>'); l+='</tr>'}); document.getElementById('log').innerHTML=l;"
+"renderRecords(j);"
 "}catch(e){document.getElementById('status').textContent=e.message}finally{refreshBusy=false}}"
 "function timeSyncUrl(d){return '/api/time?epoch='+Math.floor(d.getTime()/1000)+'&tzoff='+d.getTimezoneOffset()}"
 "async function syncTime(){await api(timeSyncUrl(new Date())); refresh()}"
@@ -55,7 +58,7 @@ static const char s_index_html[] =
 "async function keepWifiOn(){await api('/api/wifi_keep_on?enable=1'); refresh()}"
 "async function allowWifiAutoOff(){await api('/api/wifi_keep_on?enable=0'); refresh()}"
 "async function powerSave(){if(confirm('Turn Wi-Fi off until next reboot? HV will cycle off briefly and counting resumes after settle.')){try{await syncTime()}catch(e){} await api('/api/power_save'); document.body.innerHTML='<main><section><h2>Power saving mode enabled</h2><p>Wi-Fi is shutting down. HV will restart after 3 seconds, then counting resumes after settle.</p></section></main>'}}"
-"refresh(); setTimeout(autoSyncTime,500); setInterval(refresh,2000);</script></body></html>";
+"refresh(); setTimeout(autoSyncTime,500); setInterval(refresh,2000); setInterval(renderWifiCountdown,1000);</script></body></html>";
 
 
 // Extract one query parameter from an HTTP request.
@@ -124,14 +127,14 @@ static void csv_record_line(const count_record_t *record, char *line, size_t lin
     }
 }
 
-// Return the live detector status used by the dashboard: counts, HV, SD, time,
-// FPGA, and environment state.
-static esp_err_t status_handler(httpd_req_t *req)
+// Format one self-contained status snapshot. Both the onboard HTTP server and
+// the wired UART bridge use this exact payload so their dashboards agree.
+size_t format_status_json(char *buf, size_t buf_len)
 {
     uint32_t live[COUNT_CHANNELS];
     uint32_t last[COUNT_CHANNELS];
     uint64_t totals[COUNT_CHANNELS];
-    count_record_t records[8];
+    count_record_t records[STATUS_RECORDS];
     size_t record_count;
     uint8_t hv_byte;
     bool time_set;
@@ -139,6 +142,7 @@ static esp_err_t status_handler(httpd_req_t *req)
     bool counting_enabled;
     bool power_save_mode;
     bool wifi_keep_on;
+    int64_t wifi_auto_off_deadline_ms;
     int64_t settle_remaining_ms;
     bool sd_mounted = false;
     char log_path[sizeof(s_log_path)] = "";
@@ -160,15 +164,20 @@ static esp_err_t status_handler(httpd_req_t *req)
     counting_enabled = s_counting_enabled;
     power_save_mode = s_power_save_mode;
     wifi_keep_on = s_wifi_keep_on;
+    wifi_auto_off_deadline_ms = s_wifi_auto_off_deadline_ms;
     bme280_ok = s_bme280_ok;
     env_latest = s_bme280_latest;
     settle_remaining_ms = s_hv_settle_until_ms ? s_hv_settle_until_ms - (esp_timer_get_time() / 1000) : 0;
-    record_count = s_log_count < 8 ? s_log_count : 8;
+    record_count = s_log_count < STATUS_RECORDS ? s_log_count : STATUS_RECORDS;
     for (size_t i = 0; i < record_count; i++) {
         size_t newest = (s_log_head + LOG_RECORDS - 1 - i) % LOG_RECORDS;
         records[i] = s_log[newest];
     }
     portEXIT_CRITICAL(&s_state_mux);
+    int64_t now_ms = esp_timer_get_time() / 1000;
+    int64_t wifi_auto_off_remaining_ms = (!power_save_mode && !wifi_keep_on && wifi_auto_off_deadline_ms > now_ms)
+                                             ? wifi_auto_off_deadline_ms - now_ms
+                                             : 0;
     if (s_sd_mutex) {
         xSemaphoreTake(s_sd_mutex, portMAX_DELAY);
         sd_mounted = s_sd_mounted;
@@ -178,14 +187,14 @@ static esp_err_t status_handler(httpd_req_t *req)
         xSemaphoreGive(s_sd_mutex);
     }
 
-    char buf[4096];
     size_t off = 0;
-    off += snprintf(buf + off, sizeof(buf) - off,
-                    "{\"ssid\":\"%s\",\"uptime_ms\":%" PRId64 ",\"epoch\":%lld,\"time_set\":%s,\"power_save_mode\":%s,\"wifi_keep_on\":%s,\"fpga_done\":%s,\"fpga_ok\":%s,\"hv_byte\":\"%02x\",\"counting_enabled\":%s,\"hv_settle_remaining_ms\":%" PRId64 ",\"sd_mounted\":%s,\"log_file\":\"%s\",\"env_log_file\":\"%s\",\"run_label\":\"%s\",\"bme280_ok\":%s,\"env_latest\":{\"valid\":%s,\"temp_c\":%.3f,\"pressure_hpa\":%.3f,\"humidity_pct\":%.3f},\"channels\":[",
+    off += snprintf(buf + off, buf_len - off,
+                    "{\"ssid\":\"%s\",\"uptime_ms\":%" PRId64 ",\"epoch\":%lld,\"time_set\":%s,\"power_save_mode\":%s,\"wifi_keep_on\":%s,\"wifi_auto_off_remaining_ms\":%" PRId64 ",\"fpga_done\":%s,\"fpga_ok\":%s,\"hv_byte\":\"%02x\",\"counting_enabled\":%s,\"hv_settle_remaining_ms\":%" PRId64 ",\"sd_mounted\":%s,\"log_file\":\"%s\",\"env_log_file\":\"%s\",\"run_label\":\"%s\",\"bme280_ok\":%s,\"env_latest\":{\"valid\":%s,\"temp_c\":%.3f,\"pressure_hpa\":%.3f,\"humidity_pct\":%.3f},\"channels\":[",
                     WIFI_AP_SSID, esp_timer_get_time() / 1000, (long long)time(NULL),
                     time_set ? "true" : "false",
                     power_save_mode ? "true" : "false",
                     wifi_keep_on ? "true" : "false",
+                    wifi_auto_off_remaining_ms,
                     gpio_get_level(PIN_FPGA_DONE) ? "true" : "false",
                     fpga_ok ? "true" : "false",
                     hv_byte,
@@ -201,18 +210,27 @@ static esp_err_t status_handler(httpd_req_t *req)
                     env_latest.pressure_hpa,
                     env_latest.humidity_pct);
     for (size_t i = 0; i < COUNT_CHANNELS; i++) {
-        off += snprintf(buf + off, sizeof(buf) - off,
+        off += snprintf(buf + off, buf_len - off,
                         "%s{\"name\":\"%s\",\"current\":%" PRIu32 ",\"last\":%" PRIu32 ",\"total\":%" PRIu64 "}",
                         i ? "," : "", s_count_names[i], live[i], last[i], totals[i]);
     }
-    off += snprintf(buf + off, sizeof(buf) - off, "],\"records\":[");
+    off += snprintf(buf + off, buf_len - off, "],\"records\":[");
     for (size_t i = 0; i < record_count; i++) {
         if (i) {
-            off += snprintf(buf + off, sizeof(buf) - off, ",");
+            off += snprintf(buf + off, buf_len - off, ",");
         }
-        json_record_append(buf, sizeof(buf), &off, &records[i]);
+        json_record_append(buf, buf_len, &off, &records[i]);
     }
-    off += snprintf(buf + off, sizeof(buf) - off, "]}");
+    off += snprintf(buf + off, buf_len - off, "]}");
+
+    return off < buf_len ? off : buf_len - 1;
+}
+
+// Return the live detector status used by the onboard dashboard.
+static esp_err_t status_handler(httpd_req_t *req)
+{
+    char buf[4096];
+    size_t off = format_status_json(buf, sizeof(buf));
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
@@ -288,6 +306,48 @@ static bool active_sd_name_needs_time_sync(void)
     return needs_sync;
 }
 
+// Apply a phone or computer clock to the detector. Keeping this independent of
+// HTTP lets the wired UART dashboard perform the same first-sync file rename.
+esp_err_t apply_browser_time(time_t epoch, bool have_tz_offset, int32_t tz_offset_min)
+{
+    if (epoch < 1600000000LL || (have_tz_offset && (tz_offset_min < -1440 || tz_offset_min > 1440))) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    struct timeval tv = {
+        .tv_sec = epoch,
+        .tv_usec = 0,
+    };
+    bool was_time_set;
+    bool needs_filename_sync = active_sd_name_needs_time_sync();
+
+    portENTER_CRITICAL(&s_state_mux);
+    was_time_set = s_time_set;
+    portEXIT_CRITICAL(&s_state_mux);
+
+    ESP_RETURN_ON_ERROR(settimeofday(&tv, NULL), TAG, "set time");
+    portENTER_CRITICAL(&s_state_mux);
+    s_time_set = true;
+    if (have_tz_offset) {
+        s_browser_tz_valid = true;
+        s_browser_tz_offset_min = tz_offset_min;
+    }
+    portEXIT_CRITICAL(&s_state_mux);
+
+    if (!was_time_set || needs_filename_sync) {
+        time_t filename_epoch = epoch;
+        if (have_tz_offset) {
+            filename_epoch -= (time_t)tz_offset_min * 60;
+        }
+        s_run_start_epoch = filename_epoch;
+        esp_err_t ret = sd_refresh_log_path();
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "SD log rename after time sync failed: %s", esp_err_to_name(ret));
+        }
+    }
+    return ESP_OK;
+}
+
 // Accept browser time from the web page. The first browser sync in a boot also
 // renames the active SD files with that browser timestamp, because the ESP RTC
 // can contain stale time from an earlier run.
@@ -310,60 +370,34 @@ static esp_err_t time_handler(httpd_req_t *req)
             have_tz_offset = false;
         }
     }
-    struct timeval tv = {
-        .tv_sec = (time_t)epoch,
-        .tv_usec = 0,
-    };
-    bool was_time_set;
-    bool needs_filename_sync = active_sd_name_needs_time_sync();
-
-    portENTER_CRITICAL(&s_state_mux);
-    was_time_set = s_time_set;
-    portEXIT_CRITICAL(&s_state_mux);
-
-    ESP_RETURN_ON_ERROR(settimeofday(&tv, NULL), TAG, "set time");
-    portENTER_CRITICAL(&s_state_mux);
-    s_time_set = true;
-    if (have_tz_offset) {
-        s_browser_tz_valid = true;
-        s_browser_tz_offset_min = (int32_t)tz_offset_min;
-    }
-    portEXIT_CRITICAL(&s_state_mux);
-
-    // Use the browser's wall-clock time for the filename. The epoch still sets
-    // the detector clock correctly; the timezone offset only makes the filename
-    // look like the phone/computer clock the operator just used.
-    if (!was_time_set || needs_filename_sync) {
-        long long filename_epoch = epoch;
-        if (have_tz_offset) {
-            filename_epoch -= tz_offset_min * 60;
-        }
-        s_run_start_epoch = (time_t)filename_epoch;
-        esp_err_t ret = sd_refresh_log_path();
-        if (ret != ESP_OK) {
-            ESP_LOGW(TAG, "SD log rename after time sync failed: %s", esp_err_to_name(ret));
-        }
-    }
+    ESP_RETURN_ON_ERROR(apply_browser_time((time_t)epoch, have_tz_offset, (int32_t)tz_offset_min),
+                        TAG, "apply browser time");
     return text_response(req, "ok");
+}
+
+// Update the operator label and rename both active files as one SD operation.
+esp_err_t update_run_label(const char *label)
+{
+    char label_clean[RUN_LABEL_MAX + 1] = "";
+    sanitize_run_label(label ? label : "", label_clean, sizeof(label_clean));
+    if (!s_sd_mutex) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    xSemaphoreTake(s_sd_mutex, portMAX_DELAY);
+    snprintf(s_run_label, sizeof(s_run_label), "%s", label_clean);
+    esp_err_t ret = sd_refresh_log_path_locked();
+    xSemaphoreGive(s_sd_mutex);
+    return ret;
 }
 
 // Update the operator label that becomes part of the active SD filenames.
 static esp_err_t run_label_handler(httpd_req_t *req)
 {
     char label_raw[80] = "";
-    char label_clean[RUN_LABEL_MAX + 1] = "";
     if (query_value(req, "label", label_raw, sizeof(label_raw))) {
         url_decode_in_place(label_raw);
-        sanitize_run_label(label_raw, label_clean, sizeof(label_clean));
     }
-
-    if (!s_sd_mutex) {
-        return text_response(req, "sd not initialized");
-    }
-    xSemaphoreTake(s_sd_mutex, portMAX_DELAY);
-    snprintf(s_run_label, sizeof(s_run_label), "%s", label_clean);
-    esp_err_t ret = sd_refresh_log_path_locked();
-    xSemaphoreGive(s_sd_mutex);
+    esp_err_t ret = update_run_label(label_raw);
     if (ret != ESP_OK) {
         httpd_resp_set_status(req, "500 SD rename failed");
         return text_response(req, esp_err_to_name(ret));
@@ -676,33 +710,37 @@ static esp_err_t dac_handler(httpd_req_t *req)
     return text_response(req, "ok");
 }
 
-// Web endpoint for the safe FPGA reflash sequence: HV off, program, DAC init,
-// HV back on, then normal settle.
-static esp_err_t fpga_handler(httpd_req_t *req)
+// Run the only allowed FPGA reflash sequence: HV off, program, DAC init, HV
+// back on, then the normal settle delay. Web and UART controls share it.
+esp_err_t safe_reflash_fpga(void)
 {
     // Reflashing while biased made the front-end LEDs and counts misbehave on
     // the bench, so enforce the safe sequence here instead of trusting the UI.
     ESP_LOGW(TAG, "FPGA reflash requested: turning HV off before programming");
     esp_err_t ret = hv_write_and_settle(0x00);
     if (ret != ESP_OK) {
-        httpd_resp_set_status(req, "500 HV off failed");
-        return text_response(req, esp_err_to_name(ret));
+        return ret;
     }
 
     clear_live_counts();
     ret = program_fpga();
     if (ret != ESP_OK) {
-        httpd_resp_set_status(req, "500 FPGA program failed");
-        return text_response(req, esp_err_to_name(ret));
+        return ret;
     }
     ret = dac_zero_channels();
     if (ret != ESP_OK) {
-        httpd_resp_set_status(req, "500 DAC startup failed");
-        return text_response(req, esp_err_to_name(ret));
+        return ret;
     }
     ret = hv_write_and_settle(STARTUP_HV_BYTE);
+    return ret;
+}
+
+// Web endpoint for the shared safe FPGA reflash operation.
+static esp_err_t fpga_handler(httpd_req_t *req)
+{
+    esp_err_t ret = safe_reflash_fpga();
     if (ret != ESP_OK) {
-        httpd_resp_set_status(req, "500 HV restart failed");
+        httpd_resp_set_status(req, "500 FPGA reflash failed");
         return text_response(req, esp_err_to_name(ret));
     }
     return text_response(req, "ok: FPGA flashed, DAC startup values loaded, HV restarted");
@@ -735,8 +773,8 @@ static void power_save_task(void *arg)
     (void)arg;
     vTaskDelay(pdMS_TO_TICKS(1500));
 
-    // Capture the current HV byte before the web server disappears. After this
-    // request returns, the operator may not be able to reach the device again.
+    // Capture the current HV byte before Wi-Fi and its HTTP server disappear.
+    // The independent UART flight monitor remains available.
     uint8_t restore_hv;
     portENTER_CRITICAL(&s_state_mux);
     restore_hv = s_hv_byte;
@@ -783,12 +821,12 @@ static void power_save_task(void *arg)
 
     set_runtime_power_profile();
     esp_log_level_set("*", ESP_LOG_WARN);
-    ESP_LOGW(TAG, "power saving mode active; Wi-Fi is off and detector logging continues");
+    ESP_LOGW(TAG, "power saving mode active; Wi-Fi is off, UART monitoring and detector logging continue");
     vTaskDelete(NULL);
 }
 
 // Mark power-saving mode active and launch the shutdown task once.
-static esp_err_t enter_power_save_mode(void)
+esp_err_t enter_power_save_mode(void)
 {
     portENTER_CRITICAL(&s_state_mux);
     bool already_enabled = s_power_save_mode;
@@ -822,47 +860,41 @@ static esp_err_t wifi_keep_on_handler(httpd_req_t *req)
     char value[8] = "1";
     query_value(req, "enable", value, sizeof(value));
     bool keep_on = strcmp(value, "0") != 0 && strcasecmp(value, "false") != 0;
+    int64_t deadline_ms = keep_on ? 0 : (esp_timer_get_time() / 1000) + WIFI_AUTO_OFF_MS;
 
     portENTER_CRITICAL(&s_state_mux);
     s_wifi_keep_on = keep_on;
+    s_wifi_auto_off_deadline_ms = deadline_ms;
     portEXIT_CRITICAL(&s_state_mux);
 
     ESP_LOGW(TAG, "Wi-Fi auto-off %s", keep_on ? "disabled" : "enabled");
     return text_response(req, keep_on ? "ok: Wi-Fi will stay on" : "ok: Wi-Fi auto-off enabled");
 }
 
-// Give the operator a short setup window, then disable Wi-Fi automatically if no
-// one connected and "keep on" was not selected.
+// Enforce a fixed setup window even if a phone is left connected. The explicit
+// "Keep Wi-Fi On" control is the only override for this boot.
 void auto_power_save_task(void *arg)
 {
     (void)arg;
-    vTaskDelay(pdMS_TO_TICKS(WIFI_AUTO_OFF_MS));
-
     while (true) {
         portENTER_CRITICAL(&s_state_mux);
         bool active = s_power_save_mode;
         bool keep_on = s_wifi_keep_on;
-        uint8_t clients = s_wifi_clients;
+        int64_t deadline_ms = s_wifi_auto_off_deadline_ms;
         portEXIT_CRITICAL(&s_state_mux);
 
         if (active) {
             break;
         }
-        if (keep_on) {
-            vTaskDelay(pdMS_TO_TICKS(30000));
-            continue;
-        }
-        if (clients == 0) {
-            // Field default: give the operator a short setup window, then shut
-            // radio noise down if nobody connected.
-            ESP_LOGW(TAG, "no Wi-Fi client after setup window; entering power saving mode");
+        if (!keep_on && deadline_ms > 0 && esp_timer_get_time() / 1000 >= deadline_ms) {
+            ESP_LOGW(TAG, "Wi-Fi setup window expired; entering power saving mode");
             esp_err_t ret = enter_power_save_mode();
             if (ret != ESP_OK) {
                 ESP_LOGW(TAG, "auto power saving failed: %s", esp_err_to_name(ret));
             }
             break;
         }
-        vTaskDelay(pdMS_TO_TICKS(30000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
     vTaskDelete(NULL);
 }
@@ -925,6 +957,9 @@ esp_err_t start_wifi_ap(void)
     ESP_RETURN_ON_ERROR(esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20), TAG, "wifi AP bandwidth");
     ESP_LOGI(TAG, "Wi-Fi init: start AP");
     ESP_RETURN_ON_ERROR(esp_wifi_start(), TAG, "wifi start");
+    portENTER_CRITICAL(&s_state_mux);
+    s_wifi_auto_off_deadline_ms = (esp_timer_get_time() / 1000) + WIFI_AUTO_OFF_MS;
+    portEXIT_CRITICAL(&s_state_mux);
     ESP_LOGW(TAG, "Wi-Fi AP ready: SSID=%s password=%s URL=http://192.168.4.1", WIFI_AP_SSID, WIFI_AP_PASS);
     return ESP_OK;
 }

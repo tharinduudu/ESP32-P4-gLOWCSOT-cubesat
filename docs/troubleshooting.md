@@ -9,7 +9,7 @@ SSID: MuonReadout
 Password: glowcost
 ```
 
-The AP is intended for setup and may auto-off when no client connects. Reset or power-cycle the ESP32-P4 to restart the setup window.
+The AP remains available for five minutes after startup and then turns off even if a phone was left connected. Select **Keep Wi-Fi On** before the countdown reaches zero when longer access is required. Reset or power-cycle the ESP32-P4 to restart the setup window.
 
 If you want more time on the web UI, connect quickly and press **Keep Wi-Fi On**.
 
@@ -90,3 +90,15 @@ Check:
 This is expected. To save power and reduce unnecessary activity, serial minute count printing is suppressed after power-saving mode starts. Data continues logging to SD.
 
 Use the web UI before Wi-Fi turns off, or read the CSV file from the SD card after the run.
+
+## Wired UART Page Is Unavailable
+
+The USB-UART flight monitor is different from the native USB maintenance console.
+
+1. Keep the power bank connected to the normal power Type-C port.
+2. Connect the other Type-C, marked USB-UART, to the Mac.
+3. Confirm a port exists with `ls /dev/cu.usbmodem*`.
+4. Run `python3 tools/uart_web_monitor.py --port /dev/cu.usbmodem...` from the repository root.
+5. Open `http://127.0.0.1:8080`, not `192.168.4.1`.
+
+If the page says UART unavailable, close `screen`, `miniterm`, or any other program using the same serial port. The bridge can be stopped and restarted without interrupting the detector run.

@@ -7,6 +7,7 @@ idf_component_register(
         "storage.c"
         "environment.c"
         "console.c"
+        "uart_monitor.c"
         "ble_broadcast.c"
         "web.c"
     INCLUDE_DIRS "."

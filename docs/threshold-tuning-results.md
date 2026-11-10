@@ -1,5 +1,9 @@
 # Threshold Tuning Results
 
+These are historical measurements from the earlier CH0/CH1/CH2 FPGA mapping.
+The current CH1/CH2/CH3 profile retains threshold `0x080`, but its CSV channel
+names and physical detector inputs are different.
+
 This file records threshold DAC observations from the ESP32-P4 test session.
 
 The threshold DAC channels are DACx578 channels 4-7. The current firmware startup value is:

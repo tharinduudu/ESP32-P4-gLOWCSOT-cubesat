@@ -49,14 +49,25 @@ Use the page to:
 - Reload startup DAC settings.
 - Keep Wi-Fi on or allow auto-off.
 
+## Wired UART Flight Monitor
+
+The board's second Type-C connector is the USB-UART port. It can provide a wired live page without turning Wi-Fi back on.
+
+1. Keep the detector powered from the normal USB-C power input or power bank.
+2. Connect the USB-UART Type-C port to the Mac.
+3. From the repository root, run `python3 tools/uart_web_monitor.py`.
+4. Open `http://127.0.0.1:8080` on the Mac.
+
+The local page shows live minute counts and detector status, syncs time from the browser, changes the run label, performs protected controls, and downloads SD files. Disconnecting the Mac or stopping the bridge does not stop counting or SD logging. The detector remains powered by the power bank.
+
 ## BLE Quick-Look Display
 
 For low-noise field checks, use the ESP32-S3-GEEK display instead of keeping the Wi-Fi page open. The P4 broadcasts live count snapshots over BLE, and the S3 screen passively listens.
 
 The display shows:
 
-- live `01`, `02`, `12`, and `012` coincidence counts
-- raw `G6`, `G5`, and `G16` channels
+- live `1-2`, `1-3`, and `2-3` coincidence counts
+- single-channel `CH1`, `CH2`, and `CH3` counts
 - HV byte and counting state
 - SD card status
 - FPGA and time-sync status
@@ -93,14 +104,15 @@ Recommended field sequence:
 When Wi-Fi is turned off:
 
 - HV is turned off first.
-- Wi-Fi and HTTP server stop.
+- Wi-Fi and its onboard HTTP server stop; the independent UART monitor remains available.
 - HV stays off for 3 seconds.
 - HV is restored.
 - The detector waits the normal 10-second settle time.
 - Counting and SD logging continue.
+- The wired UART monitor remains available.
 - BLE live display advertisements continue.
 
-Wi-Fi remains off until the next reset or power cycle.
+Wi-Fi remains off until the next reset or power cycle. Use the wired UART dashboard on the Mac while Wi-Fi is off.
 
 ## End Of Run
 
@@ -124,13 +136,15 @@ If time was not synced before the file was created, the filename starts with `un
 
 The main count channels are:
 
-- `ch01_p13`: CH0 and CH1 coincidence
-- `ch02_p12`: CH0 and CH2 coincidence
-- `ch12_p11`: CH1 and CH2 coincidence
-- `ch012_p22`: CH0, CH1, and CH2 triple coincidence
-- `gpio6_p31`: raw CH0-like output
-- `gpio5_p29`: raw CH1-like output
-- `gpio16_p36`: raw CH2-like output
+- `ch12_p13`: CH1 and CH2 coincidence
+- `ch13_p12`: CH1 and CH3 coincidence
+- `ch23_p11`: CH2 and CH3 coincidence
+- `ch1_p31`: CH1 single count
+- `ch2_p29`: CH2 single count
+- `ch3_p36`: CH3 single count
+
+The FPGA also places spare CH0 singles on BCM25, but the CH1/CH2/CH3 detector
+profile does not record that line.
 
 During threshold tuning, very low threshold values caused raw channels to rise into thousands per minute. Threshold `0x080` was the quietest quick-test setting, while `0x070` was slightly noisier but still usable. Waveform captures still need to be analyzed further before calling the threshold fully optimized.
 

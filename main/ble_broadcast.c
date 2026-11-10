@@ -48,8 +48,8 @@ static uint16_t clamp_count(uint32_t value)
 
 // Build the manufacturer data for one advertisement. The full legacy BLE
 // advertising packet is only 31 bytes, so this intentionally omits names and
-// text labels in favor of all seven live counters.
-static size_t fill_manufacturer_payload(uint8_t payload[26])
+// text labels in favor of all six live counters.
+static size_t fill_manufacturer_payload(uint8_t payload[24])
 {
     uint32_t counts[COUNT_CHANNELS];
     uint8_t status = 0;
@@ -115,7 +115,7 @@ static void refresh_advertisement(void)
 {
     struct ble_hs_adv_fields fields = {0};
     struct ble_gap_adv_params params = {0};
-    uint8_t payload[26] = {0};
+    uint8_t payload[24] = {0};
     int rc;
 
     fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;

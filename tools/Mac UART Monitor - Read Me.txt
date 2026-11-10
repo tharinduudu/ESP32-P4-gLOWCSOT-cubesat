@@ -1,0 +1,48 @@
+gLOWCOST Muon Detector - Mac USB-UART Monitor
+================================================
+
+What this does
+--------------
+This tool opens a local detector dashboard at:
+
+    http://127.0.0.1:8080
+
+The Mac communicates with the ESP32-P4 through the board's USB-UART Type-C
+port. Wi-Fi is not required. The detector keeps counting and writing to its SD
+card if the Mac is disconnected or this program is closed.
+
+Requirements
+------------
+- A Mac with Python 3 installed
+- The detector powered from its normal USB-C power input or power bank
+- A USB cable from the ESP32-P4 USB-UART Type-C port to the Mac
+
+Start
+-----
+1. Keep the detector powered from its normal power input.
+2. Connect the USB-UART Type-C port to the Mac.
+3. Double-click "Start Muon UART Monitor.command".
+4. Keep the Terminal window open.
+5. The dashboard opens automatically in the default browser.
+
+The dashboard automatically syncs detector time from the Mac browser. It can
+show live counts and detector status, set the run label, and download SD files.
+
+Stop or disconnect
+------------------
+Press Control-C in the Terminal window, or close that Terminal window. The
+detector continues its run from the power bank. Unplugging the Mac cable also
+does not stop detector logging.
+
+Troubleshooting
+---------------
+- If macOS blocks the launcher, right-click it and choose Open.
+- Close screen, miniterm, or another program using the same serial port.
+- Check that a port exists by running: ls /dev/cu.usbmodem*
+- If Python 3 is missing, install it from python.org and start again.
+
+Safety
+------
+Do not connect or disconnect scintillator/SiPM hardware while high voltage is
+enabled. The FPGA reflash control uses the protected HV-off sequence, but it
+should only be used by an operator familiar with the detector.

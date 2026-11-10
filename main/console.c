@@ -272,8 +272,9 @@ void console_task(void *arg)
         } else if (strcmp(cmd, "help") == 0) {
             print_help();
         } else if (strcmp(cmd, "status") == 0) {
-            printf("status,fpga_done=%d,hv=0x%02x,sd=%d,bme=%d,wifi_clients=%u,ip=http://192.168.4.1\n",
-                   gpio_get_level(PIN_FPGA_DONE), s_hv_byte, s_sd_mounted, s_bme280_ok, s_wifi_clients);
+            printf("status,fpga_done=%d,hv=0x%02x,sd=%d,bme=%d,wifi_clients=%u,wifi_ip=http://192.168.4.1\n",
+                   gpio_get_level(PIN_FPGA_DONE), s_hv_byte, s_sd_mounted, s_bme280_ok,
+                   s_wifi_clients);
         } else if (strcmp(cmd, "i2c scan") == 0) {
             print_i2c_scan();
         } else if (strcmp(cmd, "counts") == 0) {
@@ -285,7 +286,7 @@ void console_task(void *arg)
         } else if (strncmp(cmd, "sd tail ", 8) == 0) {
             print_sd_tail(cmd + 8);
         } else if (strcmp(cmd, "fpga") == 0) {
-            printf("fpga,%s\n", esp_err_to_name(program_fpga()));
+            printf("fpga,%s\n", esp_err_to_name(safe_reflash_fpga()));
         } else if (strcmp(cmd, "dac zero") == 0) {
             printf("dac_zero,%s\n", esp_err_to_name(dac_zero_channels()));
         } else if (strncmp(cmd, "dac ", 4) == 0) {

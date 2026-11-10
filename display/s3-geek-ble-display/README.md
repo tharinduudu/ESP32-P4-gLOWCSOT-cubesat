@@ -8,8 +8,8 @@ The goal is to keep the detector Wi-Fi off during data taking, because Wi-Fi act
 
 The display highlights:
 
-- `01`, `02`, `12`, and `012` coincidence counts.
-- Raw `G6`, `G5`, and `G16` channels.
+- `12`, `13`, and `23` coincidence counts.
+- Single-channel `CH1`, `CH2`, and `CH3` counts.
 - HV byte.
 - Counting or wait state.
 - SD card ready state.
@@ -27,10 +27,10 @@ The P4 sends a non-connectable BLE advertisement with manufacturer data:
 | --- | ---: | --- |
 | Company ID | 2 bytes | `0xffff` temporary/local ID |
 | Magic | 2 bytes | `MU` |
-| Version | 1 byte | `1` |
+| Version | 1 byte | `2` |
 | Sequence | 1 byte | increments each packet |
 | Epoch | 4 bytes | Unix time from the P4 |
-| Counts | 14 bytes | seven unsigned 16-bit counters |
+| Counts | 12 bytes | six unsigned 16-bit counters: 12, 13, 23, CH1, CH2, CH3 |
 | Status | 1 byte | time, counting, FPGA, SD flags |
 | HV | 1 byte | current MAX1932 byte |
 

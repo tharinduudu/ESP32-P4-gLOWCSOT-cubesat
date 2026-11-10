@@ -44,7 +44,9 @@ The firmware is split into detector sections instead of keeping every subsystem 
 | `main/environment.c` | BME280 forced reads, 5-minute averages, and temperature compensation |
 | `main/web.c` | Embedded web UI, HTTP API, Wi-Fi AP, and power-saving web controls |
 | `main/console.c` | USB serial maintenance commands |
+| `main/uart_monitor.c` | Framed USB-UART status, control, SD listing, and file-transfer protocol |
 | `main/ble_broadcast.c` | BLE live-count advertisements for the S3 quick-look display |
+| `tools/uart_web_monitor.py` | Dependency-free Mac bridge and local UART dashboard |
 
 Important constants live in `main/app_common.h`:
 
@@ -68,11 +70,15 @@ main/fpga.bin
 
 To update it, replace `main/fpga.bin` with the desired iCE40 `.bin`, then rebuild and flash.
 
-The current file was copied from the Oct-2025 readout:
+The current file was copied from the CH1/CH2/CH3 three-layer FPGA build:
 
 ```text
-top_50MHz_led100_dt200_pi10us.bin
+top_50MHz_3layer_ch123_led100_dead200_pi10us.bin
 ```
+
+Its SHA-256 is recorded in `main/fpga-source.txt`. This build preserves the Pi
+GPIO output positions while remapping the active layers from CH0/CH1/CH2 to
+physical CH1/CH2/CH3.
 
 ## Startup Sequence In Code
 
@@ -92,8 +98,21 @@ The main boot path is in `app_main()`:
 12. Counter task.
 13. Console task.
 14. BLE live-count broadcaster.
-15. Wi-Fi and HTTP server.
-16. Power management.
+15. Wi-Fi AP interface.
+16. Shared HTTP server.
+17. Power management.
+
+## USB-UART Dashboard
+
+`main/uart_monitor.c` runs a dedicated 115200-baud protocol on UART0, using GPIO37 for TX and GPIO38 for RX. It is separate from the native USB Serial/JTAG maintenance console and does not consume or reset the one-minute counters.
+
+The host bridge uses only Python's standard library:
+
+```sh
+python3 tools/uart_web_monitor.py --port /dev/cu.usbmodem5B7B0297731
+```
+
+The port is auto-detected when `--port` is omitted. The bridge clears DTR/RTS where the macOS driver supports it and disables hang-up-on-close, then serves `http://127.0.0.1:8080`. Closing the bridge or unplugging the cable leaves the detector firmware and SD logger running.
 
 ## Web UI
 
@@ -101,7 +120,7 @@ The web interface is embedded as a C string in `main/web.c`. The main API endpoi
 
 | Endpoint | Purpose |
 | --- | --- |
-| `/api/status` | JSON status, live counts, records |
+| `/api/status` | JSON status, live counts, and recent records |
 | `/api/latest.txt` | newest count row for small displays |
 | `/api/log.csv` | RAM log download |
 | `/api/sd.csv` | active SD muon file download |
@@ -140,7 +159,8 @@ The display does not connect to Wi-Fi. It passively scans for the P4 manufacture
 The firmware is optimized for field operation:
 
 - Wi-Fi can be disabled after setup.
-- Wi-Fi auto-off runs when no client is connected.
+- Wi-Fi auto-off runs after five minutes unless the operator selects **Keep Wi-Fi On**.
+- The wired UART dashboard remains usable while Wi-Fi is off.
 - The S3 quick-look display uses BLE advertisements instead of the Wi-Fi web API.
 - HV is cycled safely during Wi-Fi shutdown.
 - SD logging continues without Wi-Fi.

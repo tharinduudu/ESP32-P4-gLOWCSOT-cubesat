@@ -1,0 +1,31 @@
+Embedded FPGA bitstream provenance
+==================================
+
+Source filename:
+top_50MHz_3layer_ch123_led100_dead200_pi10us.bin
+
+Source project:
+FPGA_development/FPGA_OCT15
+
+Size:
+7334 bytes
+
+SHA-256:
+c9d8782dabfd678a89cd013b1385b5a6a1156310400d7d7a6d78c45db330ca64
+
+Active physical detector channels:
+CH1, CH2, CH3
+
+Pi GPIO output mapping:
+BCM27 = CH1 & CH2
+BCM18 = CH1 & CH3
+BCM17 = CH2 & CH3
+BCM6  = CH1 single
+BCM5  = CH2 single
+BCM16 = CH3 single
+BCM25 = spare CH0 single (not logged by the P4 firmware)
+
+Validation:
+The FPGA project's RTL, synthesized-netlist, decoded-binary, and pin-map tests
+passed on 2026-11-10, including 1203 explicit mapping, phase, width, and timing
+checks for each simulation level.
