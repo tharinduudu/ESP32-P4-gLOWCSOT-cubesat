@@ -264,7 +264,7 @@ def draw_page_two(c):
     draw_image_fit(c, ASSETS / "detector-usb-power-bank.jpg", 380, 382, 186, 139)
     paragraph(
         c,
-        "Keep the power bank connected to the detector's normal USB-C power input. Connect a data-capable USB cable from the separate <b>USB-UART</b> Type-C port to the Mac.",
+        "Keep the power bank connected to the detector's normal USB-C power input. The <b>left USB-C port is the USB-UART port</b>. Connect it to the Mac with a data-capable USB cable.",
         MARGIN, 515, 310, BODY,
     )
     paragraph(
