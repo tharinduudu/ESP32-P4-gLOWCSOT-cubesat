@@ -251,7 +251,7 @@ def draw_page_two(c):
     )
     paragraph(
         c,
-        "Run the downloaded file on the Mac. The local monitor page opens automatically; leave the Terminal window running.",
+        "Run the downloaded file in Terminal:<br/><font name='Courier'>python3 ~/Downloads/uart_web_monitor.py</font><br/>The monitor page opens automatically; leave Terminal running.",
         MARGIN, 607, 315, BODY,
     )
     callout(
