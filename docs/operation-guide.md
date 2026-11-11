@@ -61,9 +61,12 @@ The board's second Type-C connector is the USB-UART port. It can provide a wired
 
 1. Keep the detector powered from the normal USB-C power input or power bank.
 2. Connect the USB-UART Type-C port to the Mac.
-3. Unzip `dist/Muon-UART-Monitor-macOS.zip` and double-click
+3. Download the
+   [packaged Mac monitor](https://github.com/tharinduudu/ESP32-P4-gLOWCSOT-cubesat/raw/refs/heads/main/dist/Muon-UART-Monitor-macOS.zip).
+   The ZIP contains `uart_web_monitor.py`, the launcher, and its Read Me.
+4. Unzip `Muon-UART-Monitor-macOS.zip` and double-click
    `Start Muon UART Monitor.command`. Keep its Terminal window open.
-4. Open `http://127.0.0.1:8080` on the Mac.
+5. Open `http://127.0.0.1:8080` on the Mac.
 
 From a repository checkout, the equivalent command is:
 

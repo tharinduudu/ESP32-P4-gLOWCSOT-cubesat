@@ -46,10 +46,16 @@ After power-up, connect your phone or computer to:
 
 The browser automatically syncs time to the detector. The first browser sync in each boot renames the active SD files using the browser's local clock time.
 
-For a wired flight monitor without Wi-Fi, keep the detector powered from its normal USB-C power input and connect the other, USB-UART, Type-C port to a Mac. Run:
+For a wired flight monitor without Wi-Fi, first download and unzip the
+[packaged Mac monitor](https://github.com/tharinduudu/ESP32-P4-gLOWCSOT-cubesat/raw/refs/heads/main/dist/Muon-UART-Monitor-macOS.zip).
+It contains `uart_web_monitor.py`, `Start Muon UART Monitor.command`, and a Read
+Me. Keep the detector powered from its normal USB-C power input, connect the
+other USB-UART Type-C port to a Mac, and double-click the launcher.
+
+From a repository checkout, run:
 
 ```sh
-python3 tools/uart_web_monitor.py
+python3 tools/uart_web_monitor.py --open-browser
 ```
 
 Then open `http://127.0.0.1:8080`. This local page provides live counts, status, time sync, run labels, controls, and SD file downloads through UART. Unplugging the Mac does not reset the minute counters or stop SD logging; the power bank continues to run the detector.

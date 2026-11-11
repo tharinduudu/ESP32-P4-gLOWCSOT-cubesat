@@ -17,6 +17,16 @@ Requirements
 - The detector powered from its normal USB-C power input or power bank
 - A USB cable from the ESP32-P4 USB-UART Type-C port to the Mac
 
+Get the monitor
+---------------
+Download Muon-UART-Monitor-macOS.zip from:
+
+    https://github.com/tharinduudu/ESP32-P4-gLOWCSOT-cubesat/tree/main/dist
+
+Open Muon-UART-Monitor-macOS.zip and click "Download raw file", then unzip it.
+The package contains uart_web_monitor.py, Start Muon UART Monitor.command, and
+this Read Me.
+
 Start
 -----
 1. Keep the detector powered from its normal power input.
