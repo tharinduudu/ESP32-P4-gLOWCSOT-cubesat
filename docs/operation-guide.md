@@ -49,16 +49,41 @@ Use the page to:
 - Reload startup DAC settings.
 - Keep Wi-Fi on or allow auto-off.
 
+The Wi-Fi setup window lasts five minutes from startup. A countdown is shown at
+the top of the web page. The timer still expires if a phone or laptop is left
+connected. Select **Keep Wi-Fi On** to disable automatic shutdown for the
+current power cycle; select **Allow Auto-Off** to start a fresh five-minute
+countdown.
+
 ## Wired UART Flight Monitor
 
 The board's second Type-C connector is the USB-UART port. It can provide a wired live page without turning Wi-Fi back on.
 
 1. Keep the detector powered from the normal USB-C power input or power bank.
 2. Connect the USB-UART Type-C port to the Mac.
-3. From the repository root, run `python3 tools/uart_web_monitor.py`.
+3. Unzip `dist/Muon-UART-Monitor-macOS.zip` and double-click
+   `Start Muon UART Monitor.command`. Keep its Terminal window open.
 4. Open `http://127.0.0.1:8080` on the Mac.
 
-The local page shows live minute counts and detector status, syncs time from the browser, changes the run label, performs protected controls, and downloads SD files. Disconnecting the Mac or stopping the bridge does not stop counting or SD logging. The detector remains powered by the power bank.
+From a repository checkout, the equivalent command is:
+
+```sh
+python3 tools/uart_web_monitor.py --open-browser
+```
+
+The local page shows the latest 10 count lines, highlights the newest line,
+shows detector status, syncs time from the browser, changes the run label,
+performs protected controls, and downloads SD files. Disconnecting the Mac or
+stopping the bridge does not stop counting or SD logging. The detector remains
+powered by the power bank.
+
+If macOS blocks the packaged launcher, right-click it and choose **Open**. If
+the page reports that UART is unavailable, close `screen`, miniterm, or another
+program that may be using the same serial port. Check for a port with:
+
+```sh
+ls /dev/cu.usbmodem*
+```
 
 ## BLE Quick-Look Display
 

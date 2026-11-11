@@ -191,6 +191,7 @@ idf.py -p /dev/cu.usbmodem11301 flash monitor
 
 ## Guides
 
+- [Printable Detector Quick Guide (PDF)](docs/gLOWCOST_Detector_Quick_Guide.pdf)
 - [Detector Operation Guide](docs/operation-guide.md)
 - [Detector Sections Explained](docs/detector-sections.md)
 - [Build, Flash, And Development Guide](docs/developer-guide.md)
