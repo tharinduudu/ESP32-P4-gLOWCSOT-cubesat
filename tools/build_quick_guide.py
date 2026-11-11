@@ -242,115 +242,58 @@ def draw_page_one(c):
 
 def draw_page_two(c):
     page_header(c, "Wired USB-UART monitor", "Use the Mac dashboard while detector Wi-Fi remains off", 2)
+    section_title(c, "1. Download and prepare the monitor", MARGIN, 678, PAGE_W - 2 * MARGIN)
+    paragraph(
+        c,
+        "Before the flight, use an internet connection to visit <b>github.com/tharinduudu/ESP32-P4-gLOWCSOT-cubesat</b>. Open <b>dist/Muon-UART-Monitor-macOS.zip</b> and click <b>Download raw file</b>. Unzip it in Downloads. The folder contains <b>uart_web_monitor.py</b>.",
+        MARGIN, 653, PAGE_W - 2 * MARGIN, BODY,
+    )
+    paragraph(
+        c,
+        "Python 3 is required on the Mac. In Terminal, run <b>python3 --version</b>. If it is unavailable, install Python 3 from <b>python.org/downloads/macos</b> before the flight.",
+        MARGIN, 593, PAGE_W - 2 * MARGIN, BODY,
+    )
 
-    draw_image_fit(c, ASSETS / "detector-usb-power-bank.jpg", MARGIN, 498, 258, 193)
-    c.setFont("Helvetica", 8.3)
-    c.setFillColor(MUTED)
-    c.drawString(MARGIN, 486, "Keep the detector powered from the power bank during monitoring.")
+    section_title(c, "2. Connect the detector", MARGIN, 537, PAGE_W - 2 * MARGIN)
+    draw_image_fit(c, ASSETS / "detector-usb-power-bank.jpg", 380, 379, 186, 139)
+    paragraph(
+        c,
+        "Keep the power bank connected to the detector's normal USB-C power input. Connect a data-capable USB cable from the separate <b>USB-UART</b> Type-C port to the Mac.",
+        MARGIN, 512, 310, BODY,
+    )
+    paragraph(
+        c,
+        "The monitor works with detector Wi-Fi off. Leave the power bank connected for the entire run.",
+        MARGIN, 447, 310, BODY,
+    )
 
-    section_title(c, "Connect the Mac", 329, 678, 237)
+    section_title(c, "3. Open the monitor from Terminal", MARGIN, 353, PAGE_W - 2 * MARGIN)
     numbered_steps(
         c,
         [
-            "Leave the normal USB-C power input connected to the power bank.",
-            "Connect the separate USB-UART Type-C port on the ESP32-P4 board to the Mac.",
-            "Start the Mac monitor and keep its Terminal window open.",
-            "Open <b>http://127.0.0.1:8080</b> if the browser does not open automatically.",
+            "Open <b>Terminal</b> on the Mac. Type <b>python3</b> followed by a space; do not press Return yet.",
+            "In Finder, drag <b>uart_web_monitor.py</b> from the unzipped folder into Terminal. The full path will appear.",
+            "Press Return. Leave Terminal open and visit <b>http://127.0.0.1:8080</b> in the Mac's browser.",
+            "Check <b>UART connected</b>, SD status, the detector time, and the latest counts.",
         ],
-        329,
-        651,
-        237,
-        gap=6,
-    )
-
-    section_title(c, "Get and start the Mac monitor", MARGIN, 449, PAGE_W - 2 * MARGIN)
-    c.setFillColor(INK)
-    c.setFont("Helvetica-Bold", 10.5)
-    c.drawString(MARGIN, 423, "Download the monitor")
-    paragraph(
-        c,
-        "Go to <b>github.com/tharinduudu/ESP32-P4-gLOWCSOT-cubesat</b>. Open <b>dist/Muon-UART-Monitor-macOS.zip</b>, then click <b>Download raw file</b>.",
-        MARGIN,
-        408,
-        310,
-        SMALL,
+        MARGIN, 328, PAGE_W - 2 * MARGIN, gap=5,
     )
     paragraph(
         c,
-        "The ZIP contains <b>uart_web_monitor.py</b>, the Mac launcher, and a Read Me.",
-        MARGIN,
-        366,
-        310,
-        SMALL,
+        "Example: <font name='Courier'>python3 /path/to/uart_web_monitor.py</font><br/>This method does not require opening the blocked .command file.",
+        MARGIN, 205, PAGE_W - 2 * MARGIN, SMALL,
     )
-
-    c.setFillColor(INK)
-    c.setFont("Helvetica-Bold", 10.5)
-    c.drawString(382, 423, "Start it")
+    section_title(c, "During the run", MARGIN, 157, PAGE_W - 2 * MARGIN)
     paragraph(
         c,
-        "Unzip the download and double-click <b>Start Muon UART Monitor.command</b>. If macOS blocks it, right-click and choose <b>Open</b>. Keep the Terminal window open.",
-        382,
-        408,
-        184,
-        SMALL,
+        "The browser sends the Mac's time to the detector; confirm the displayed time. The first valid sync renames the active files. Closing Terminal or unplugging the Mac leaves counting and SD logging running on the power bank.",
+        MARGIN, 132, PAGE_W - 2 * MARGIN, SMALL,
     )
-
-    c.setFillColor(INK)
-    c.setFont("Helvetica-Bold", 10.5)
-    c.drawString(MARGIN, 315, "The wired page provides")
-    checklist(
-        c,
-        [
-            "Latest 10 count lines, with the newest line highlighted.",
-            "Automatic time sync from the Mac browser.",
-            "SD, FPGA, HV, counting, and environment status.",
-            "Run-label changes and SD file downloads.",
-            "Protected Wi-Fi shutdown and FPGA reflash controls.",
-        ],
-        MARGIN,
-        293,
-        318,
-        leading=22,
-    )
-
-    callout(
-        c,
-        "The detector keeps running",
-        "Keep the power bank connected. Closing the Mac program or unplugging the UART cable does not reset the detector or stop its counters and SD logging.",
-        382,
-        185,
-        184,
-        136,
-    )
-
-    callout(
-        c,
-        "Time and filenames",
-        "Opening the page sends the Mac's local time to the detector. The first valid sync renames the active muon and environment files with that timestamp.",
-        382,
-        40,
-        184,
-        134,
-        fill=PALE_GRAY,
-    )
-
-    section_title(c, "If the page does not open", MARGIN, 150, 310)
     paragraph(
         c,
-        "Confirm Python 3 is installed and a serial device appears with <b>ls /dev/cu.usbmodem*</b>. Close <b>screen</b>, miniterm, or any other program using the UART port, then restart the monitor.",
-        MARGIN,
-        124,
-        306,
-        BODY,
+        "<b>UART unavailable?</b> Check the USB-UART port and data cable. Close screen or other serial programs and restart the monitor. In Terminal, <b>ls /dev/cu.usbmodem*</b> lists detected USB serial ports.",
+        MARGIN, 79, PAGE_W - 2 * MARGIN, SMALL,
     )
-
-    c.setStrokeColor(GREEN)
-    c.setLineWidth(1.2)
-    c.line(MARGIN, 50, 360, 50)
-    c.setFillColor(GREEN)
-    c.setFont("Helvetica-Bold", 9.5)
-    c.drawString(MARGIN, 35, "Wi-Fi is not required for the wired dashboard.")
 
 
 def build():

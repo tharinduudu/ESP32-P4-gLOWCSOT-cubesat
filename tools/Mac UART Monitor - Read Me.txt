@@ -29,11 +29,16 @@ this Read Me.
 
 Start
 -----
-1. Keep the detector powered from its normal power input.
-2. Connect the USB-UART Type-C port to the Mac.
-3. Double-click "Start Muon UART Monitor.command".
-4. Keep the Terminal window open.
-5. The dashboard opens automatically in the default browser.
+1. Install Python 3 from python.org/downloads/macos if needed. Check it in
+   Terminal with: python3 --version
+2. Keep the detector powered from its normal power input or power bank.
+3. Connect the separate USB-UART Type-C port to the Mac with a data cable.
+4. Open Terminal. Type python3 followed by a space; do not press Return yet.
+5. Drag uart_web_monitor.py from the unzipped folder into Terminal, then press
+   Return. Keep the Terminal window open. This does not require opening the
+   .command file, which macOS may block.
+6. Open http://127.0.0.1:8080 in the Mac browser. Check UART connected, SD
+   status, detector time, and counts.
 
 The dashboard automatically syncs detector time from the Mac browser. It can
 show live counts and detector status, set the run label, and download SD files.
@@ -46,7 +51,8 @@ does not stop detector logging.
 
 Troubleshooting
 ---------------
-- If macOS blocks the launcher, right-click it and choose Open.
+- Start the Python script from Terminal as described above if macOS blocks the
+  .command launcher. Keep the .py file in the extracted folder.
 - Close screen, miniterm, or another program using the same serial port.
 - Check that a port exists by running: ls /dev/cu.usbmodem*
 - If Python 3 is missing, install it from python.org and start again.

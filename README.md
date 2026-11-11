@@ -50,7 +50,9 @@ For a wired flight monitor without Wi-Fi, first download and unzip the
 [packaged Mac monitor](https://github.com/tharinduudu/ESP32-P4-gLOWCSOT-cubesat/raw/refs/heads/main/dist/Muon-UART-Monitor-macOS.zip).
 It contains `uart_web_monitor.py`, `Start Muon UART Monitor.command`, and a Read
 Me. Keep the detector powered from its normal USB-C power input, connect the
-other USB-UART Type-C port to a Mac, and double-click the launcher.
+other USB-UART Type-C port to a Mac. Open Terminal, type `python3` and a space,
+drag the extracted `uart_web_monitor.py` into Terminal, and press Return. This
+avoids needing to open the `.command` launcher. Python 3 must be installed.
 
 From a repository checkout, run:
 

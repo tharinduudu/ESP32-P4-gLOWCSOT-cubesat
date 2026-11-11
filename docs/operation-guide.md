@@ -59,14 +59,16 @@ countdown.
 
 The board's second Type-C connector is the USB-UART port. It can provide a wired live page without turning Wi-Fi back on.
 
-1. Keep the detector powered from the normal USB-C power input or power bank.
-2. Connect the USB-UART Type-C port to the Mac.
-3. Download the
+1. Download the
    [packaged Mac monitor](https://github.com/tharinduudu/ESP32-P4-gLOWCSOT-cubesat/raw/refs/heads/main/dist/Muon-UART-Monitor-macOS.zip).
    The ZIP contains `uart_web_monitor.py`, the launcher, and its Read Me.
-4. Unzip `Muon-UART-Monitor-macOS.zip` and double-click
-   `Start Muon UART Monitor.command`. Keep its Terminal window open.
-5. Open `http://127.0.0.1:8080` on the Mac.
+2. Unzip the package. Confirm Python 3 is installed using `python3 --version` in
+   Terminal; install it from python.org before the flight if needed.
+3. Keep the power bank connected and connect the separate USB-UART Type-C port
+   to the Mac with a data cable.
+4. In Terminal type `python3` followed by a space. Drag `uart_web_monitor.py`
+   from the extracted folder into Terminal, then press Return. Keep Terminal open.
+5. Open `http://127.0.0.1:8080` on the Mac and check the connection and time.
 
 From a repository checkout, the equivalent command is:
 
@@ -80,7 +82,7 @@ performs protected controls, and downloads SD files. Disconnecting the Mac or
 stopping the bridge does not stop counting or SD logging. The detector remains
 powered by the power bank.
 
-If macOS blocks the packaged launcher, right-click it and choose **Open**. If
+The Terminal method above does not require opening the `.command` launcher. If
 the page reports that UART is unavailable, close `screen`, miniterm, or another
 program that may be using the same serial port. Check for a port with:
 
