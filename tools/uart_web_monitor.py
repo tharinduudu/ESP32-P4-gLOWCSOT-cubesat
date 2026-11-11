@@ -43,6 +43,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const fmt=n=>n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(1)+' MB';
 async function api(url){let r=await fetch(url,{cache:'no-store'});let t=await r.text();if(!r.ok)throw Error(t);return t}
 async function syncTime(){await api('/api/time?epoch='+Math.floor(Date.now()/1000)+'&tzoff='+new Date().getTimezoneOffset())}
+let timeSyncedForConnection=false;
 const channelLabel=name=>({'ch12_p13':'1-2','ch13_p12':'1-3','ch23_p11':'2-3','ch1_p31':'ch1','ch2_p29':'ch2','ch3_p36':'ch3'}[name]||name);
 function renderRecords(j){let records=(j.records||[]).slice(0,10),channels=j.channels||[];
 document.getElementById('historyHead').innerHTML='<tr><th>Time</th>'+channels.map(c=>'<th>'+esc(channelLabel(c.name))+'</th>').join('')+'</tr>';
@@ -51,18 +52,19 @@ let latest=records[0];document.getElementById('latestTime').textContent=new Date
 let chronological=[...records].reverse();document.getElementById('history').innerHTML=chronological.map((r,i)=>'<tr class="'+(i===chronological.length-1?'newest-row':'')+'"><td>'+esc(new Date(r.epoch*1000).toLocaleString())+'</td>'+r.counts.map(v=>'<td>'+v+'</td>').join('')+'</tr>').join('')}
 async function refresh(){try{let r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error(await r.text());let j=await r.json();
 document.getElementById('link').innerHTML='<span class="ok">UART connected</span>';
+if(!timeSyncedForConnection){timeSyncedForConnection=true;try{await syncTime()}catch(e){timeSyncedForConnection=false}}
 renderRecords(j);
 let sd=j.sd_mounted?'<span class="ok">ready</span>':'<span class="bad">not ready</span>';let fpga=j.fpga_done?'<span class="ok">ready</span>':'<span class="bad">not ready</span>';
 document.getElementById('status').innerHTML='<p>SD: '+sd+'</p><p>FPGA: '+fpga+'</p><p>HV: 0x'+j.hv_byte+'</p><p>Counting: '+(j.counting_enabled?'enabled':'settling/off')+'</p><p>Time: '+(j.time_set?new Date(j.epoch*1000).toLocaleString():'not set')+'</p><p>Environment: '+(j.env_latest.valid?j.env_latest.temp_c.toFixed(2)+' C, '+j.env_latest.pressure_hpa.toFixed(1)+' hPa, '+j.env_latest.humidity_pct.toFixed(1)+'%':'unavailable')+'</p><p>Wi-Fi: '+(j.power_save_mode?'off':'on')+'</p>';
 if(document.activeElement!==document.getElementById('label'))document.getElementById('label').value=j.run_label||'';
-}catch(e){document.getElementById('link').innerHTML='<span class="bad">UART unavailable</span>';document.getElementById('message').textContent=e.message}}
+}catch(e){timeSyncedForConnection=false;document.getElementById('link').innerHTML='<span class="bad">UART unavailable</span>';document.getElementById('message').textContent=e.message}}
 async function loadFiles(){try{let j=JSON.parse(await api('/api/files'));document.getElementById('files').innerHTML=j.files.map(f=>'<tr><td><a href="/api/file?name='+encodeURIComponent(f.name)+'">'+esc(f.name)+'</a>'+(f.current?' <span class="ok">active</span>':'')+'</td><td>'+new Date(f.mtime*1000).toLocaleString()+'</td><td>'+fmt(f.size)+'</td></tr>').join('')}catch(e){}}
 async function action(url){try{document.getElementById('message').textContent=await api(url);await refresh()}catch(e){document.getElementById('message').textContent=e.message}}
 function setLabel(){action('/api/label?value='+encodeURIComponent(document.getElementById('label').value)).then(loadFiles)}
 function setHv(){action('/api/hv?byte='+encodeURIComponent(document.getElementById('hv').value))}
 function wifiOff(){if(confirm('Turn Wi-Fi off? HV will cycle off briefly, then restart and settle.'))action('/api/power_save')}
 function flashFpga(){if(confirm('HV will turn off before the FPGA is flashed, then DAC and HV will restart. Continue?'))action('/api/fpga')}
-(async()=>{try{await syncTime()}catch(e){}await refresh();await loadFiles();setInterval(refresh,2000);setInterval(loadFiles,30000)})();
+(async()=>{await refresh();await loadFiles();setInterval(refresh,2000);setInterval(loadFiles,30000)})();
 </script></body></html>"""
 
 
@@ -299,7 +301,8 @@ def main() -> None:
     parser.add_argument("--port", help="USB-UART device; auto-detected when omitted")
     parser.add_argument("--listen", default="127.0.0.1", help="HTTP listen address")
     parser.add_argument("--http-port", type=int, default=8080, help="HTTP port")
-    parser.add_argument("--open-browser", action="store_true", help="open the local dashboard automatically")
+    parser.add_argument("--open-browser", action="store_true", default=True, help="open the local dashboard automatically (default)")
+    parser.add_argument("--no-open-browser", dest="open_browser", action="store_false", help="do not open a browser")
     args = parser.parse_args()
 
     server = ThreadingHTTPServer((args.listen, args.http_port), MonitorHandler)

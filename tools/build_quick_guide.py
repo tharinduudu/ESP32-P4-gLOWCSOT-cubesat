@@ -16,7 +16,7 @@ from reportlab.platypus import Paragraph
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "docs" / "assets"
 OUTPUT = ROOT / "docs" / "gLOWCOST_Detector_Quick_Guide.pdf"
-MONITOR_URL = "https://github.com/tharinduudu/ESP32-P4-gLOWCSOT-cubesat/raw/refs/heads/main/dist/Muon-UART-Monitor-macOS.zip"
+MONITOR_URL = "https://github.com/tharinduudu/ESP32-P4-gLOWCSOT-cubesat/releases/download/uart-monitor-v1.1.0/uart_web_monitor.py"
 
 PAGE_W, PAGE_H = letter
 MARGIN = 46
@@ -243,45 +243,49 @@ def draw_page_one(c):
 
 def draw_page_two(c):
     page_header(c, "Wired USB-UART monitor", "Use the Mac dashboard while detector Wi-Fi remains off", 2)
-    section_title(c, "1. Download and prepare the monitor", MARGIN, 678, PAGE_W - 2 * MARGIN)
+    section_title(c, "1. Download and run the monitor", MARGIN, 678, PAGE_W - 2 * MARGIN)
     paragraph(
         c,
-        f"Before the flight, connect the Mac to the internet and click <link href='{MONITOR_URL}' color='#1f6f54'><b>Download the Mac USB-UART monitor (ZIP)</b></link>. Open the downloaded ZIP to unzip it.",
-        MARGIN, 653, PAGE_W - 2 * MARGIN, BODY,
+        f"Before the flight, connect the Mac to the internet and click <link href='{MONITOR_URL}' color='#1f6f54'><b>Download uart_web_monitor.py</b></link>.",
+        MARGIN, 653, 315, BODY,
     )
     paragraph(
         c,
-        "The monitor requires Python 3. If the launcher reports that it is missing, install it from <link href='https://www.python.org/downloads/macos/' color='#1f6f54'><b>python.org/downloads/macos</b></link> before the flight.",
-        MARGIN, 593, PAGE_W - 2 * MARGIN, BODY,
+        "Run the downloaded file on the Mac. The local monitor page opens automatically; leave the Terminal window running.",
+        MARGIN, 607, 315, BODY,
+    )
+    callout(
+        c, "Dependencies",
+        "macOS and Python 3.10 or newer. The script uses Python's standard library; no additional packages are required.",
+        383, 572, 183, 104, fill=PALE_GRAY,
     )
 
-    section_title(c, "2. Connect the detector", MARGIN, 537, PAGE_W - 2 * MARGIN)
-    draw_image_fit(c, ASSETS / "detector-usb-power-bank.jpg", 380, 379, 186, 139)
+    section_title(c, "2. Connect the detector", MARGIN, 540, PAGE_W - 2 * MARGIN)
+    draw_image_fit(c, ASSETS / "detector-usb-power-bank.jpg", 380, 382, 186, 139)
     paragraph(
         c,
         "Keep the power bank connected to the detector's normal USB-C power input. Connect a data-capable USB cable from the separate <b>USB-UART</b> Type-C port to the Mac.",
-        MARGIN, 512, 310, BODY,
+        MARGIN, 515, 310, BODY,
     )
     paragraph(
         c,
         "The monitor works with detector Wi-Fi off. Leave the power bank connected for the entire run.",
-        MARGIN, 447, 310, BODY,
+        MARGIN, 450, 310, BODY,
     )
 
-    section_title(c, "3. Open the monitor", MARGIN, 353, PAGE_W - 2 * MARGIN)
+    section_title(c, "3. Check the run", MARGIN, 356, PAGE_W - 2 * MARGIN)
     numbered_steps(
         c,
         [
-            "Open the unzipped folder and double-click <b>Start Muon UART Monitor.command</b>.",
-            "If macOS blocks it, open <b>System Settings &gt; Privacy &amp; Security</b>, find the blocked app message, and choose <b>Open Anyway</b>. Confirm only if you trust the download.",
-            "Keep the Terminal window open. If the browser does not open, visit <b>http://127.0.0.1:8080</b> on the Mac.",
+            "If the browser did not open, visit <b>http://127.0.0.1:8080</b> on the Mac.",
             "Check <b>UART connected</b>, SD status, the detector time, and the latest counts.",
+            "Set a flight or location label if needed. Download SD files from the page.",
         ],
-        MARGIN, 328, PAGE_W - 2 * MARGIN, gap=5,
+        MARGIN, 331, PAGE_W - 2 * MARGIN, gap=7,
     )
     paragraph(
         c,
-        "If macOS still refuses to open the launcher, ask the detector maintainer for help with your Mac's security settings.",
+        "The monitor uses a local page on the Mac. Detector Wi-Fi is not required.",
         MARGIN, 205, PAGE_W - 2 * MARGIN, SMALL,
     )
     section_title(c, "During the run", MARGIN, 157, PAGE_W - 2 * MARGIN)
