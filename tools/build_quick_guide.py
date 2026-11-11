@@ -16,6 +16,7 @@ from reportlab.platypus import Paragraph
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "docs" / "assets"
 OUTPUT = ROOT / "docs" / "gLOWCOST_Detector_Quick_Guide.pdf"
+MONITOR_URL = "https://github.com/tharinduudu/ESP32-P4-gLOWCSOT-cubesat/raw/refs/heads/main/dist/Muon-UART-Monitor-macOS.zip"
 
 PAGE_W, PAGE_H = letter
 MARGIN = 46
@@ -245,12 +246,12 @@ def draw_page_two(c):
     section_title(c, "1. Download and prepare the monitor", MARGIN, 678, PAGE_W - 2 * MARGIN)
     paragraph(
         c,
-        "Before the flight, use an internet connection to visit <b>github.com/tharinduudu/ESP32-P4-gLOWCSOT-cubesat</b>. Open <b>dist/Muon-UART-Monitor-macOS.zip</b> and click <b>Download raw file</b>. Unzip it in Downloads. The folder contains <b>uart_web_monitor.py</b>.",
+        f"Before the flight, connect the Mac to the internet and click <link href='{MONITOR_URL}' color='#1f6f54'><b>Download the Mac USB-UART monitor (ZIP)</b></link>. Open the downloaded ZIP to unzip it.",
         MARGIN, 653, PAGE_W - 2 * MARGIN, BODY,
     )
     paragraph(
         c,
-        "Python 3 is required on the Mac. In Terminal, run <b>python3 --version</b>. If it is unavailable, install Python 3 from <b>python.org/downloads/macos</b> before the flight.",
+        "The monitor requires Python 3. If the launcher reports that it is missing, install it from <link href='https://www.python.org/downloads/macos/' color='#1f6f54'><b>python.org/downloads/macos</b></link> before the flight.",
         MARGIN, 593, PAGE_W - 2 * MARGIN, BODY,
     )
 
@@ -267,20 +268,20 @@ def draw_page_two(c):
         MARGIN, 447, 310, BODY,
     )
 
-    section_title(c, "3. Open the monitor from Terminal", MARGIN, 353, PAGE_W - 2 * MARGIN)
+    section_title(c, "3. Open the monitor", MARGIN, 353, PAGE_W - 2 * MARGIN)
     numbered_steps(
         c,
         [
-            "Open <b>Terminal</b> on the Mac. Type <b>python3</b> followed by a space; do not press Return yet.",
-            "In Finder, drag <b>uart_web_monitor.py</b> from the unzipped folder into Terminal. The full path will appear.",
-            "Press Return. Leave Terminal open and visit <b>http://127.0.0.1:8080</b> in the Mac's browser.",
+            "Open the unzipped folder and double-click <b>Start Muon UART Monitor.command</b>.",
+            "If macOS blocks it, open <b>System Settings &gt; Privacy &amp; Security</b>, find the blocked app message, and choose <b>Open Anyway</b>. Confirm only if you trust the download.",
+            "Keep the Terminal window open. If the browser does not open, visit <b>http://127.0.0.1:8080</b> on the Mac.",
             "Check <b>UART connected</b>, SD status, the detector time, and the latest counts.",
         ],
         MARGIN, 328, PAGE_W - 2 * MARGIN, gap=5,
     )
     paragraph(
         c,
-        "Example: <font name='Courier'>python3 /path/to/uart_web_monitor.py</font><br/>This method does not require opening the blocked .command file.",
+        "If macOS still refuses to open the launcher, ask the detector maintainer for help with your Mac's security settings.",
         MARGIN, 205, PAGE_W - 2 * MARGIN, SMALL,
     )
     section_title(c, "During the run", MARGIN, 157, PAGE_W - 2 * MARGIN)
